@@ -8,14 +8,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var exploreAll bool
+var infoAll bool
 
-const exploreInfoPattern = "%-20s%-40s%s"
+const infoPattern = "%-20s%-40s%s"
 
-// exploreCmd represents the explore command
-var exploreCmd = &cobra.Command{
-	Use:   "explore",
-	Short: "Explore releases on github",
+// infoCmd represents the info command
+var infoCmd = &cobra.Command{
+	Use:   "info <package>",
+	Short: "Show information about a package and a release",
 	Args: func(cmd *cobra.Command, args []string) error {
 		if len(args) < 1 {
 			return fmt.Errorf("requires a pakage name, e.g. jsnjack/kazy-go")
@@ -29,7 +29,7 @@ var exploreCmd = &cobra.Command{
 			return
 		}
 		client := github.NewClient(nil)
-		if exploreAll {
+		if infoAll {
 			opt := &github.ListOptions{}
 			releases, _, err := client.Repositories.ListReleases(context.Background(), owner, repo, opt)
 			if err != nil {
@@ -54,23 +54,24 @@ var exploreCmd = &cobra.Command{
 }
 
 func printReleaseInfoHeader() {
-	fmt.Println(fmt.Sprintf(exploreInfoPattern, "Version", "Published", "Info"))
+	fmt.Println(fmt.Sprintf(infoPattern, "Version", "Published", "Info"))
 }
 
 func printReleaseInfo(release *github.RepositoryRelease) {
-	fmt.Println(fmt.Sprintf(exploreInfoPattern, release.GetTagName(), release.GetPublishedAt(), release.GetHTMLURL()))
+	fmt.Println(fmt.Sprintf(infoPattern, release.GetTagName(), release.GetPublishedAt(), release.GetHTMLURL()))
 }
 
 func init() {
-	rootCmd.AddCommand(exploreCmd)
+	rootCmd.AddCommand(infoCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// exploreCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// infoCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	exploreCmd.Flags().BoolVarP(&exploreAll, "all", "a", false, "Display all releases")
+	// infoCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	infoCmd.Flags().BoolVarP(&infoAll, "all", "a", false, "Display all releases")
 }
