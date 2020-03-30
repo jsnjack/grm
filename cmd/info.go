@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/google/go-github/v30/github"
 	"github.com/spf13/cobra"
@@ -10,7 +11,7 @@ import (
 
 var infoAll bool
 
-const infoPattern = "%-20s%-40s%s"
+const infoPattern = "%-15s%-15s%-15s%s"
 
 // infoCmd represents the info command
 var infoCmd = &cobra.Command{
@@ -54,11 +55,15 @@ var infoCmd = &cobra.Command{
 }
 
 func printReleaseInfoHeader() {
-	fmt.Println(fmt.Sprintf(infoPattern, "Version", "Published", "Info"))
+	fmt.Println(fmt.Sprintf(infoPattern, "Version", "Published", "Downloads", "Info"))
 }
 
 func printReleaseInfo(release *github.RepositoryRelease) {
-	fmt.Println(fmt.Sprintf(infoPattern, release.GetTagName(), release.GetPublishedAt().Format("2006-01-02"), release.GetHTMLURL()))
+	var downloads int
+	for _, item := range release.Assets {
+		downloads += item.GetDownloadCount()
+	}
+	fmt.Println(fmt.Sprintf(infoPattern, release.GetTagName(), release.GetPublishedAt().Format("2006-01-02"), strconv.Itoa(downloads), release.GetHTMLURL()))
 }
 
 func init() {
