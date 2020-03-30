@@ -58,7 +58,7 @@ func printReleaseInfoHeader() {
 }
 
 func printReleaseInfo(release *github.RepositoryRelease) {
-	fmt.Println(fmt.Sprintf(infoPattern, release.GetTagName(), release.GetPublishedAt(), release.GetHTMLURL()))
+	fmt.Println(fmt.Sprintf(infoPattern, release.GetTagName(), release.GetPublishedAt().Format("2006-01-02"), release.GetHTMLURL()))
 }
 
 func init() {
