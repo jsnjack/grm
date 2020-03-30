@@ -35,7 +35,7 @@ var installCmd = &cobra.Command{
 			return
 		}
 		fmt.Printf("Found release %s\n", release.GetTagName())
-		url := getDownloadURL()
+		getDownloadURL(release.Assets)
 		// for _, item := range release.Assets {
 		// 	fmt.Printf("  Assets: %s %s", item.GetName(), item.GetContentType())
 		// 	fmt.Println()
