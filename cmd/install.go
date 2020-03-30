@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 
+	"github.com/google/go-github/v30/github"
 	"github.com/schollz/progressbar/v2"
 	"github.com/spf13/cobra"
 )
@@ -16,12 +18,28 @@ var installCmd = &cobra.Command{
 	Short: "Install a package from github releases",
 	Args: func(cmd *cobra.Command, args []string) error {
 		if len(args) < 1 {
-			return fmt.Errorf("requires a fully qualified pakage name, e.g. jsnjack/kazy-go")
+			return fmt.Errorf("requires a pakage name, e.g. jsnjack/kazy-go")
 		}
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-
+		owner, repo, err := cleanPackage(args[0])
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		client := github.NewClient(nil)
+		release, _, err := client.Repositories.GetLatestRelease(context.Background(), owner, repo)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Printf("Found release %s\n", release.GetTagName())
+		for _, item := range release.Assets {
+			fmt.Printf("  Assets: %s %s", item.GetName(), item.GetContentType())
+			fmt.Println()
+			downloadFile(item.GetBrowserDownloadURL())
+		}
 	},
 }
 
@@ -40,8 +58,7 @@ func init() {
 }
 
 func downloadFile(url string) error {
-	urlToGet := "https://github.com/schollz/croc/releases/download/v4.1.4/croc_v4.1.4_Windows-64bit_GUI.zip"
-	req, err := http.NewRequest("GET", urlToGet, nil)
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
 	}
@@ -63,4 +80,10 @@ func downloadFile(url string) error {
 	out = io.MultiWriter(out, bar)
 	io.Copy(out, resp.Body)
 	return nil
+}
+
+func getDownloadURL(assets []*github.ReleaseAsset) {
+	for _, item := range assets {
+		fmt.Printf("  Asset: %s %s", item.GetName(), item.GetContentType())
+	}
 }
