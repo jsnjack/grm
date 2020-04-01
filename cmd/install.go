@@ -15,7 +15,7 @@ var installCmd = &cobra.Command{
 	Short: "Install a package from github releases",
 	Args: func(cmd *cobra.Command, args []string) error {
 		for _, item := range args {
-			_, _, err := cleanPackage(item)
+			_, err := CreatePackage(item)
 			if err != nil {
 				return fmt.Errorf("requires a package name(e.g. jsnjack/kazy-go), got %s", item)
 			}
@@ -26,12 +26,12 @@ var installCmd = &cobra.Command{
 		cmd.SilenceUsage = true
 		cmd.SilenceErrors = true
 		for _, item := range args {
-			owner, repo, err := cleanPackage(item)
+			pkg, err := CreatePackage(item)
 			if err != nil {
 				return err
 			}
 			client := github.NewClient(nil)
-			release, _, err := client.Repositories.GetLatestRelease(context.Background(), owner, repo)
+			release, _, err := client.Repositories.GetLatestRelease(context.Background(), pkg.Owner, pkg.Repo)
 			if err != nil {
 				return err
 			}

@@ -26,7 +26,7 @@ var infoCmd = &cobra.Command{
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		owner, repo, err := cleanPackage(args[0])
+		pkg, err := CreatePackage(args[0])
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -34,7 +34,7 @@ var infoCmd = &cobra.Command{
 		client := github.NewClient(nil)
 		if infoAll {
 			opt := &github.ListOptions{}
-			releases, _, err := client.Repositories.ListReleases(context.Background(), owner, repo, opt)
+			releases, _, err := client.Repositories.ListReleases(context.Background(), pkg.Owner, pkg.Repo, opt)
 			if err != nil {
 				fmt.Println(err)
 				return
@@ -45,7 +45,7 @@ var infoCmd = &cobra.Command{
 			}
 		} else {
 			// Show just latest release
-			release, _, err := client.Repositories.GetLatestRelease(context.Background(), owner, repo)
+			release, _, err := client.Repositories.GetLatestRelease(context.Background(), pkg.Owner, pkg.Repo)
 			if err != nil {
 				fmt.Println(err)
 				return
