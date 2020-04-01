@@ -10,8 +10,10 @@ import (
 )
 
 var infoAll bool
+var infoShort bool
 
-const infoPattern = "%-15s%-15s%-15s%s"
+const infoAllPattern = "%-15s%-15s%-15s%s"
+const infoPattern = "%-20s %s\n"
 
 // infoCmd represents the info command
 var infoCmd = &cobra.Command{
@@ -48,14 +50,31 @@ var infoCmd = &cobra.Command{
 				fmt.Println(err)
 				return
 			}
-			printReleaseInfoHeader()
-			printReleaseInfo(release)
+			if infoShort {
+				fmt.Println(release.GetTagName())
+				for _, item := range release.Assets {
+					fmt.Printf("  %s\n", item.GetName())
+				}
+			} else {
+				fmt.Printf(fmt.Sprintf(infoPattern, "Version", release.GetTagName()))
+				fmt.Printf(fmt.Sprintf(infoPattern, "Published", release.GetPublishedAt().Format("2006-01-02")))
+				fmt.Printf(fmt.Sprintf(infoPattern, "URL", release.GetHTMLURL()))
+				fmt.Println("Assets:")
+				for _, item := range release.Assets {
+					fmt.Printf("  %s\n", item.GetName())
+					fmt.Printf("    " + fmt.Sprintf(infoPattern, "Type", item.GetContentType()))
+					fmt.Printf("    " + fmt.Sprintf(infoPattern, "Downloads", strconv.Itoa(item.GetDownloadCount())))
+					fmt.Printf("    " + fmt.Sprintf(infoPattern, "Download URL", item.GetBrowserDownloadURL()))
+					fmt.Printf("    " + fmt.Sprintf(infoPattern, "Size", strconv.Itoa(item.GetSize()/1024/1024)+"MB"))
+					fmt.Println()
+				}
+			}
 		}
 	},
 }
 
 func printReleaseInfoHeader() {
-	fmt.Println(fmt.Sprintf(infoPattern, "Version", "Published", "Downloads", "Info"))
+	fmt.Println(fmt.Sprintf(infoAllPattern, "Version", "Published", "Downloads", "URL"))
 }
 
 func printReleaseInfo(release *github.RepositoryRelease) {
@@ -63,7 +82,7 @@ func printReleaseInfo(release *github.RepositoryRelease) {
 	for _, item := range release.Assets {
 		downloads += item.GetDownloadCount()
 	}
-	fmt.Println(fmt.Sprintf(infoPattern, release.GetTagName(), release.GetPublishedAt().Format("2006-01-02"), strconv.Itoa(downloads), release.GetHTMLURL()))
+	fmt.Println(fmt.Sprintf(infoAllPattern, release.GetTagName(), release.GetPublishedAt().Format("2006-01-02"), strconv.Itoa(downloads), release.GetHTMLURL()))
 }
 
 func init() {
@@ -79,4 +98,5 @@ func init() {
 	// is called directly, e.g.:
 	// infoCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	infoCmd.Flags().BoolVarP(&infoAll, "all", "a", false, "Display all releases")
+	infoCmd.Flags().BoolVarP(&infoShort, "short", "s", false, "Display in compact format")
 }
