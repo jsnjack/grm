@@ -11,37 +11,41 @@ import (
 
 // installCmd represents the install command
 var installCmd = &cobra.Command{
-	Use:   "install <repository>",
+	Use:   "install <repository...>",
 	Short: "Install a package from github releases",
 	Args: func(cmd *cobra.Command, args []string) error {
-		if len(args) < 1 {
-			return fmt.Errorf("requires a pakage name, e.g. jsnjack/kazy-go")
+		for _, item := range args {
+			_, _, err := cleanPackage(item)
+			if err != nil {
+				return fmt.Errorf("requires a package name(e.g. jsnjack/kazy-go), got %s", item)
+			}
 		}
 		return nil
 	},
-	Run: func(cmd *cobra.Command, args []string) {
-		owner, repo, err := cleanPackage(args[0])
-		if err != nil {
-			fmt.Println(err)
-			return
+	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
+		cmd.SilenceErrors = true
+		for _, item := range args {
+			owner, repo, err := cleanPackage(item)
+			if err != nil {
+				return err
+			}
+			client := github.NewClient(nil)
+			release, _, err := client.Repositories.GetLatestRelease(context.Background(), owner, repo)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("Found release %s\n", release.GetTagName())
+			asset, err := selectAsset(release.Assets)
+			if err != nil {
+				return err
+			}
+			err = install.Application(asset)
+			if err != nil {
+				return err
+			}
 		}
-		client := github.NewClient(nil)
-		release, _, err := client.Repositories.GetLatestRelease(context.Background(), owner, repo)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		fmt.Printf("Found release %s\n", release.GetTagName())
-		asset, err := selectAsset(release.Assets)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		err = install.Application(asset)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
+		return nil
 	},
 }
 
