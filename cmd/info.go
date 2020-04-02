@@ -25,19 +25,19 @@ var infoCmd = &cobra.Command{
 		}
 		return nil
 	},
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
+		cmd.SilenceErrors = true
 		pkg, err := CreatePackage(args[0])
 		if err != nil {
-			fmt.Println(err)
-			return
+			return err
 		}
 		client := github.NewClient(nil)
 		if infoAll {
 			opt := &github.ListOptions{}
 			releases, _, err := client.Repositories.ListReleases(context.Background(), pkg.Owner, pkg.Repo, opt)
 			if err != nil {
-				fmt.Println(err)
-				return
+				return err
 			}
 			printReleaseInfoHeader()
 			for _, item := range releases {
@@ -47,8 +47,7 @@ var infoCmd = &cobra.Command{
 			// Show just latest release
 			release, _, err := client.Repositories.GetLatestRelease(context.Background(), pkg.Owner, pkg.Repo)
 			if err != nil {
-				fmt.Println(err)
-				return
+				return err
 			}
 			if infoShort {
 				fmt.Println(release.GetTagName())
@@ -70,6 +69,7 @@ var infoCmd = &cobra.Command{
 				}
 			}
 		}
+		return nil
 	},
 }
 
