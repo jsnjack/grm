@@ -30,16 +30,20 @@ var installCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			client := github.NewClient(nil)
-			release, _, err := client.Repositories.GetLatestRelease(context.Background(), pkg.Owner, pkg.Repo)
+			// Select the release based on version
+			release, err := selectRelease(pkg)
 			if err != nil {
 				return err
 			}
 			fmt.Printf("Found release %s\n", release.GetTagName())
+
+			// Select best mached asset
 			asset, err := selectAsset(release.Assets)
 			if err != nil {
 				return err
 			}
+
+			// Install package
 			err = install.Application(asset)
 			if err != nil {
 				return err
@@ -71,4 +75,16 @@ func selectAsset(assets []*github.ReleaseAsset) (*github.ReleaseAsset, error) {
 		}
 	}
 	return nil, fmt.Errorf("Supported asset not found")
+}
+
+func selectRelease(pkg *Package) (*github.RepositoryRelease, error) {
+	client := github.NewClient(nil)
+	if pkg.Version == "" {
+		// Get latest release
+		release, _, err := client.Repositories.GetLatestRelease(context.Background(), pkg.Owner, pkg.Repo)
+		return release, err
+	}
+	// Get specific release
+	release, _, err := client.Repositories.GetReleaseByTag(context.Background(), pkg.Owner, pkg.Repo, pkg.Version)
+	return release, err
 }
