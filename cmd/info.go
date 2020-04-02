@@ -45,7 +45,7 @@ var infoCmd = &cobra.Command{
 			}
 		} else {
 			// Show just latest release
-			release, _, err := client.Repositories.GetLatestRelease(context.Background(), pkg.Owner, pkg.Repo)
+			release, err := selectRelease(pkg)
 			if err != nil {
 				return err
 			}
