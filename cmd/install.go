@@ -44,7 +44,15 @@ var installCmd = &cobra.Command{
 			}
 
 			// Install package
-			err = install.Application(asset)
+			switch asset.GetContentType() {
+			case "application/octet-stream":
+				err = install.Application(asset)
+				break
+			case "application/zip", "application/gzip":
+				err = install.Archive(asset)
+			default:
+				err = fmt.Errorf("Unsupported type: %s", asset.GetContentType())
+			}
 			if err != nil {
 				return err
 			}
@@ -70,7 +78,8 @@ func init() {
 func selectAsset(assets []*github.ReleaseAsset) (*github.ReleaseAsset, error) {
 	for _, item := range assets {
 		fmt.Printf("  %s (%s)\n", item.GetName(), item.GetContentType())
-		if item.GetContentType() == "application/octet-stream" {
+		switch item.GetContentType() {
+		case "application/octet-stream", "application/zip", "application/gzip":
 			return item, nil
 		}
 	}
