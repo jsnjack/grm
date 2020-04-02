@@ -11,7 +11,7 @@ import (
 
 // installCmd represents the install command
 var installCmd = &cobra.Command{
-	Use:   "install <repository...>",
+	Use:   "install <package...>",
 	Short: "Install a package from github releases",
 	Args: func(cmd *cobra.Command, args []string) error {
 		for _, item := range args {
