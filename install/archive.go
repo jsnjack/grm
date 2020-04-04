@@ -19,7 +19,7 @@ func Archive(asset *github.ReleaseAsset) error {
 	}
 
 	// Walk the archive to find binary
-	fmt.Println("Looking for a file...")
+	fmt.Println("Looking for a binary file...")
 	filenameA := ""
 	err = archiver.Walk(filename, func(f archiver.File) error {
 		ct, err := getFileContentType(f)

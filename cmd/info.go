@@ -20,6 +20,7 @@ var infoCmd = &cobra.Command{
 	Use:   "info <package>",
 	Short: "Show information about a package and a release",
 	Args: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceErrors = true
 		if len(args) < 1 {
 			return fmt.Errorf("requires a pakage name, e.g. jsnjack/kazy-go")
 		}
@@ -27,7 +28,6 @@ var infoCmd = &cobra.Command{
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
-		cmd.SilenceErrors = true
 		pkg, err := CreatePackage(args[0])
 		if err != nil {
 			return err

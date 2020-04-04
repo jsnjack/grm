@@ -3,28 +3,34 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/go-github/v30/github"
 	"github.com/jsnjack/grm/install"
 	"github.com/spf13/cobra"
 )
 
+var installFilter string
+
 // installCmd represents the install command
 var installCmd = &cobra.Command{
 	Use:   "install <package...>",
 	Short: "Install a package from github releases",
 	Args: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceErrors = true
+		if len(args) == 0 {
+			return fmt.Errorf("requires a package name (e.g. jsnjack/kazy-go)")
+		}
 		for _, item := range args {
 			_, err := CreatePackage(item)
 			if err != nil {
-				return fmt.Errorf("requires a package name(e.g. jsnjack/kazy-go), got %s", item)
+				return fmt.Errorf("requires a package name (e.g. jsnjack/kazy-go), got %s", item)
 			}
 		}
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
-		cmd.SilenceErrors = true
 		for _, item := range args {
 			pkg, err := CreatePackage(item)
 			if err != nil {
@@ -37,11 +43,14 @@ var installCmd = &cobra.Command{
 			}
 			fmt.Printf("Found release %s\n", release.GetTagName())
 
+			fmt.Println("Inspecting assets...")
 			// Select best mached asset
-			asset, err := selectAsset(release.Assets)
+			asset, err := selectAsset(release.Assets, installFilter)
 			if err != nil {
 				return err
 			}
+
+			fmt.Printf("Found asset %s\n", asset.GetName())
 
 			// Install package
 			switch asset.GetContentType() {
@@ -74,15 +83,17 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// installCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	installCmd.Flags().StringVarP(&installFilter, "filter", "f", "", "Asset's name must contain provided string, e.g. 'Linux-64bit'")
 }
 
-func selectAsset(assets []*github.ReleaseAsset) (*github.ReleaseAsset, error) {
+func selectAsset(assets []*github.ReleaseAsset, filter string) (*github.ReleaseAsset, error) {
 	for _, item := range assets {
 		fmt.Printf("  %s (%s)\n", item.GetName(), item.GetContentType())
-		switch item.GetContentType() {
-		case "application/octet-stream", "application/zip", "application/gzip":
-			return item, nil
+		if strings.Contains(item.GetName(), filter) {
+			switch item.GetContentType() {
+			case "application/octet-stream", "application/zip", "application/gzip":
+				return item, nil
+			}
 		}
 	}
 	return nil, fmt.Errorf("Supported asset not found")
