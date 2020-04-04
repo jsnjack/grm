@@ -38,29 +38,16 @@ func Archive(asset *github.ReleaseAsset) error {
 	}
 	fmt.Printf("Extracting file %s...\n", filenameA)
 
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
-
-	path := fmt.Sprintf(home + "/.grm/bin/")
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		err = os.MkdirAll(path, os.ModePerm)
-		if err != nil {
-			return err
-		}
-	}
-
 	// Remove file if it is already exists
-	_, err = os.Stat(path + filenameA)
+	_, err = os.Stat(DefaultBinDir + filenameA)
 	if err == nil {
-		err = os.Remove(path + filenameA)
+		err = os.Remove(DefaultBinDir + filenameA)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = archiver.Extract(filename, filenameA, path)
+	err = archiver.Extract(filename, filenameA, DefaultBinDir)
 	if err == nil {
 		fmt.Println("done")
 	}

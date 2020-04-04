@@ -1,12 +1,14 @@
 package install
 
 import (
-	"fmt"
 	"io"
 	"os"
 
 	"github.com/google/go-github/v30/github"
 )
+
+// DefaultBinDir is the default location for binary files
+const DefaultBinDir = "/usr/local/bin/"
 
 // Application handles binary assets
 func Application(asset *github.ReleaseAsset) error {
@@ -15,26 +17,13 @@ func Application(asset *github.ReleaseAsset) error {
 		return err
 	}
 
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
-
-	path := fmt.Sprintf(home + "/.grm/bin/")
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		err = os.MkdirAll(path, os.ModePerm)
-		if err != nil {
-			return err
-		}
-	}
-
 	from, err := os.Open(filename)
 	if err != nil {
 		return err
 	}
 	defer from.Close()
 
-	to, err := os.OpenFile(path+asset.GetName(), os.O_RDWR|os.O_CREATE, 0744)
+	to, err := os.OpenFile(DefaultBinDir+asset.GetName(), os.O_RDWR|os.O_CREATE, 0744)
 	if err != nil {
 		return err
 	}
