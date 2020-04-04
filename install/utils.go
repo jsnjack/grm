@@ -6,10 +6,15 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"time"
 
 	"github.com/schollz/progressbar/v2"
 )
+
+// DefaultBinDir is the default location for binary files
+const DefaultBinDir = "/usr/local/bin/"
 
 func downloadFile(url string, filename string) (string, error) {
 	req, err := http.NewRequest("GET", url, nil)
@@ -50,6 +55,18 @@ func downloadFile(url string, filename string) (string, error) {
 	}
 	fmt.Println("")
 	return path + filename, nil
+}
+
+func installBinary(filename string) error {
+	fmt.Printf("Installing in %s...\n", DefaultBinDir)
+	cmdCp := exec.Command("/bin/sh", "-c", fmt.Sprintf("sudo cp %s %s", filename, DefaultBinDir))
+	err := cmdCp.Run()
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("sudo chmod +x %s%s", DefaultBinDir, filepath.Base(filename)))
+	err = cmd.Run()
+	return err
 }
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"

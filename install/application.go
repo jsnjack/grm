@@ -1,14 +1,8 @@
 package install
 
 import (
-	"fmt"
-	"os/exec"
-
 	"github.com/google/go-github/v30/github"
 )
-
-// DefaultBinDir is the default location for binary files
-const DefaultBinDir = "/usr/local/bin/"
 
 // Application handles binary assets
 func Application(asset *github.ReleaseAsset) error {
@@ -16,7 +10,6 @@ func Application(asset *github.ReleaseAsset) error {
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("sudo cp %s %s", filename, DefaultBinDir))
-	err = cmd.Run()
+	err = installBinary(filename)
 	return err
 }

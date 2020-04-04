@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
+	"path/filepath"
 
 	"github.com/mholt/archiver/v3"
 
@@ -19,7 +19,7 @@ func Archive(asset *github.ReleaseAsset) error {
 	}
 
 	// Walk the archive to find binary
-	fmt.Println("Looking for file...")
+	fmt.Println("Looking for a file...")
 	filenameA := ""
 	err = archiver.Walk(filename, func(f archiver.File) error {
 		ct, err := getFileContentType(f)
@@ -34,23 +34,17 @@ func Archive(asset *github.ReleaseAsset) error {
 		return nil
 	})
 	if filenameA == "" {
-		return fmt.Errorf("Unable to find binary file in archive")
+		return fmt.Errorf("Unable to find a binary file in archive")
 	}
 	fmt.Printf("Extracting file %s...\n", filenameA)
 
-	// Remove file if it is already exists
-	_, err = os.Stat(DefaultBinDir + filenameA)
-	if err == nil {
-		err = os.Remove(DefaultBinDir + filenameA)
-		if err != nil {
-			return err
-		}
-	}
-
-	err = archiver.Extract(filename, filenameA, DefaultBinDir)
+	tmpDir := filepath.Dir(filename)
+	err = archiver.Extract(filename, filenameA, tmpDir)
 	if err == nil {
 		fmt.Println("done")
 	}
+
+	err = installBinary(tmpDir + "/" + filenameA)
 	return err
 }
 
