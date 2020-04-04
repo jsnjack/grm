@@ -1,8 +1,8 @@
 package install
 
 import (
-	"io"
-	"os"
+	"fmt"
+	"os/exec"
 
 	"github.com/google/go-github/v30/github"
 )
@@ -16,19 +16,7 @@ func Application(asset *github.ReleaseAsset) error {
 	if err != nil {
 		return err
 	}
-
-	from, err := os.Open(filename)
-	if err != nil {
-		return err
-	}
-	defer from.Close()
-
-	to, err := os.OpenFile(DefaultBinDir+asset.GetName(), os.O_RDWR|os.O_CREATE, 0744)
-	if err != nil {
-		return err
-	}
-	defer to.Close()
-
-	_, err = io.Copy(to, from)
+	cmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("sudo cp %s %s", filename, DefaultBinDir))
+	err = cmd.Run()
 	return err
 }

@@ -48,7 +48,7 @@ func downloadFile(url string, filename string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Println("\ndone")
+	fmt.Println("")
 	return path + filename, nil
 }
 

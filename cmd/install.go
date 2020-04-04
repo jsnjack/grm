@@ -50,12 +50,14 @@ var installCmd = &cobra.Command{
 				break
 			case "application/zip", "application/gzip":
 				err = install.Archive(asset)
+				break
 			default:
 				err = fmt.Errorf("Unsupported type: %s", asset.GetContentType())
 			}
 			if err != nil {
 				return err
 			}
+			fmt.Println("done")
 		}
 		return nil
 	},
