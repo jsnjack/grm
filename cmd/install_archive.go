@@ -1,4 +1,4 @@
-package install
+package cmd
 
 import (
 	"fmt"
@@ -12,10 +12,10 @@ import (
 )
 
 // Archive handles compressed assets
-func Archive(asset *github.ReleaseAsset) error {
+func Archive(asset *github.ReleaseAsset) (string, error) {
 	filename, err := downloadFile(asset.GetBrowserDownloadURL(), asset.GetName())
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// Walk the archive to find binary
@@ -24,8 +24,7 @@ func Archive(asset *github.ReleaseAsset) error {
 	err = archiver.Walk(filename, func(f archiver.File) error {
 		ct, err := getFileContentType(f)
 		if err != nil {
-			fmt.Println(err)
-			return nil
+			return err
 		}
 		fmt.Printf("  %-40s %s\n", f.Name(), ct)
 		if filenameA == "" && ct == "application/octet-stream" {
@@ -34,18 +33,18 @@ func Archive(asset *github.ReleaseAsset) error {
 		return nil
 	})
 	if filenameA == "" {
-		return fmt.Errorf("Unable to find a binary file in archive")
+		return "", fmt.Errorf("Unable to find a binary file in archive")
 	}
 	fmt.Printf("Extracting file %s...\n", filenameA)
 
 	tmpDir := filepath.Dir(filename)
 	err = archiver.Extract(filename, filenameA, tmpDir)
-	if err == nil {
-		fmt.Println("done")
+	if err != nil {
+		return "", err
 	}
+	fmt.Println("done")
 
-	err = installBinary(tmpDir + "/" + filenameA)
-	return err
+	return installBinary(tmpDir + "/" + filenameA)
 }
 
 func getFileContentType(out io.Reader) (string, error) {

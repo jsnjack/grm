@@ -12,6 +12,11 @@ type Package struct {
 	Version string
 }
 
+// GetFullName returns full package name, e.g. jsnjack/kazy-go
+func (p *Package) GetFullName() string {
+	return p.Owner + "/" + p.Repo
+}
+
 // CreatePackage creates new Package instance from a string
 // jsnjack/kazy-go==v1.1.0
 func CreatePackage(text string) (*Package, error) {

@@ -19,4 +19,10 @@ build: bin/${BINARY}
 release: build
 	python ~/lxdfs/cobro/ci/utils/release_on_github.py -f bin/${BINARY} -r jsnjack/grm -t "v`monova`"
 
-.PHONY: version
+.ONESHELL:
+viewdb:
+	rm -f view.db
+	cp /home/${USER}/.config/grm/grm.db view.db
+	bolter -f view.db
+
+.PHONY: version viewdb release build

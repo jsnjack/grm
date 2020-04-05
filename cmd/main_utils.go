@@ -1,4 +1,4 @@
-package install
+package cmd
 
 import (
 	"fmt"
@@ -57,16 +57,17 @@ func downloadFile(url string, filename string) (string, error) {
 	return path + filename, nil
 }
 
-func installBinary(filename string) error {
+func installBinary(filename string) (string, error) {
 	fmt.Printf("Installing in %s...\n", DefaultBinDir)
 	cmdCp := exec.Command("/bin/sh", "-c", fmt.Sprintf("sudo cp %s %s", filename, DefaultBinDir))
 	err := cmdCp.Run()
 	if err != nil {
-		return err
+		return "", err
 	}
-	cmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("sudo chmod +x %s%s", DefaultBinDir, filepath.Base(filename)))
+	installedFile := fmt.Sprintf("%s%s", DefaultBinDir, filepath.Base(filename))
+	cmd := exec.Command("/bin/sh", "-c", "sudo chmod +x "+installedFile)
 	err = cmd.Run()
-	return err
+	return installedFile, err
 }
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"

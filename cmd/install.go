@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/google/go-github/v30/github"
-	"github.com/jsnjack/grm/install"
 	"github.com/spf13/cobra"
 )
 
@@ -53,16 +52,21 @@ var installCmd = &cobra.Command{
 			fmt.Printf("Found asset %s\n", asset.GetName())
 
 			// Install package
+			var installedFile string
 			switch asset.GetContentType() {
 			case "application/octet-stream":
-				err = install.Application(asset)
+				installedFile, err = Application(asset)
 				break
 			case "application/zip", "application/gzip":
-				err = install.Archive(asset)
+				installedFile, err = Archive(asset)
 				break
 			default:
 				err = fmt.Errorf("Unsupported type: %s", asset.GetContentType())
 			}
+			if err != nil {
+				return err
+			}
+			err = saveToDB(pkg, installFilter, installedFile, release.GetTagName())
 			if err != nil {
 				return err
 			}

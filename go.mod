@@ -9,5 +9,6 @@ require (
 	github.com/schollz/progressbar/v2 v2.15.0
 	github.com/spf13/cobra v0.0.7
 	github.com/spf13/viper v1.6.2
-	golang.org/x/crypto v0.0.0-20200323165209-0ec3e9974c59 // indirect
+	go.etcd.io/bbolt v1.3.4
+	golang.org/x/crypto v0.0.0-20200323165209-0ec3e9974c59
 )
