@@ -10,12 +10,35 @@ import (
 var updateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update installed packages",
+	Args: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceErrors = true
+		switch len(args) {
+		case 0:
+			break
+		case 1:
+			for _, item := range args {
+				_, err := CreatePackage(item)
+				if err != nil {
+					return fmt.Errorf("requires a package name (e.g. jsnjack/kazy-go), got %s", item)
+				}
+			}
+			break
+		default:
+			return fmt.Errorf("Too many arguments")
+		}
+		return nil
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		pkgs, err := loadInstalledFromDB()
 		if err != nil {
 			return err
 		}
 		for _, p := range pkgs {
+			if len(args) == 1 {
+				if args[0] != p.Owner+"/"+p.Repo {
+					continue
+				}
+			}
 			fmt.Printf("Checking %s/%s...\n", p.Owner, p.Repo)
 			release, err := selectRelease(&Package{Owner: p.Owner, Repo: p.Repo})
 			if err != nil {
