@@ -10,6 +10,7 @@ type Package struct {
 	Repo    string
 	Owner   string
 	Version string
+	Filter  string
 }
 
 // GetFullName returns full package name, e.g. jsnjack/kazy-go

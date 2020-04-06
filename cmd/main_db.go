@@ -28,3 +28,25 @@ func saveToDB(pkg *Package, filter string, filename string, version string) erro
 	})
 	return err
 }
+
+func loadInstalledFromDB() ([]*Package, error) {
+	var pkgs []*Package
+	err := DB.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(PackagesBucket))
+		c := b.Cursor()
+		for key, _ := c.First(); key != nil; key, _ = c.Next() {
+			pb := b.Bucket(key)
+			if pb != nil {
+				p, err := CreatePackage(string(key))
+				if err != nil {
+					continue
+				}
+				p.Version = string(pb.Get([]byte("version")))
+				p.Filter = string(pb.Get([]byte("filter")))
+				pkgs = append(pkgs, p)
+			}
+		}
+		return nil
+	})
+	return pkgs, err
+}

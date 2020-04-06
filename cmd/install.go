@@ -35,6 +35,7 @@ var installCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
+			pkg.Filter = installFilter
 			// Select the release based on version
 			release, err := selectRelease(pkg)
 			if err != nil {
@@ -42,35 +43,8 @@ var installCmd = &cobra.Command{
 			}
 			fmt.Printf("Found release %s\n", release.GetTagName())
 
-			fmt.Println("Inspecting assets...")
-			// Select best mached asset
-			asset, err := selectAsset(release.Assets, installFilter)
-			if err != nil {
-				return err
-			}
-
-			fmt.Printf("Found asset %s\n", asset.GetName())
-
-			// Install package
-			var installedFile string
-			switch asset.GetContentType() {
-			case "application/octet-stream":
-				installedFile, err = Application(asset)
-				break
-			case "application/zip", "application/gzip":
-				installedFile, err = Archive(asset)
-				break
-			default:
-				err = fmt.Errorf("Unsupported type: %s", asset.GetContentType())
-			}
-			if err != nil {
-				return err
-			}
-			err = saveToDB(pkg, installFilter, installedFile, release.GetTagName())
-			if err != nil {
-				return err
-			}
-			fmt.Println("done")
+			err = installRelease(release, pkg)
+			return err
 		}
 		return nil
 	},
@@ -113,4 +87,37 @@ func selectRelease(pkg *Package) (*github.RepositoryRelease, error) {
 	// Get specific release
 	release, _, err := client.Repositories.GetReleaseByTag(context.Background(), pkg.Owner, pkg.Repo, pkg.Version)
 	return release, err
+}
+
+func installRelease(release *github.RepositoryRelease, pkg *Package) error {
+	fmt.Println("Inspecting assets...")
+	// Select best mached asset
+	asset, err := selectAsset(release.Assets, pkg.Filter)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Found asset %s\n", asset.GetName())
+
+	// Install package
+	var installedFile string
+	switch asset.GetContentType() {
+	case "application/octet-stream":
+		installedFile, err = Application(asset)
+		break
+	case "application/zip", "application/gzip":
+		installedFile, err = Archive(asset)
+		break
+	default:
+		err = fmt.Errorf("Unsupported type: %s", asset.GetContentType())
+	}
+	if err != nil {
+		return err
+	}
+	err = saveToDB(pkg, pkg.Filter, installedFile, release.GetTagName())
+	if err != nil {
+		return err
+	}
+	fmt.Println("done")
+	return nil
 }
