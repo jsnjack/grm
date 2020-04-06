@@ -48,6 +48,10 @@ var updateCmd = &cobra.Command{
 				fmt.Println("  latest")
 			} else {
 				fmt.Printf("  new version %s\n", release.GetTagName())
+				if ok := askForConfirmation("Confirm to update:"); !ok {
+					return nil
+				}
+
 				// p.Version doesn't matter
 				installRelease(release, p)
 			}

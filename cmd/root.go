@@ -20,6 +20,8 @@ var PackagesBucket = []byte("packages")
 
 var cfgFile string
 
+var rootYes bool
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "grm",
@@ -43,7 +45,7 @@ func init() {
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 
-	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.grm.yaml)")
+	rootCmd.PersistentFlags().BoolVarP(&rootYes, "yes", "y", false, "Confirm all")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
