@@ -17,7 +17,7 @@ bin/${BINARY}: version main.go cmd/*.go
 build: bin/${BINARY}
 
 release: build
-	python ~/lxdfs/cobro/ci/utils/release_on_github.py -f bin/${BINARY} -r jsnjack/grm -t "v`monova`"
+	release_on_github -f bin/${BINARY} -r jsnjack/grm -t "v`monova`"
 
 .ONESHELL:
 viewdb:
