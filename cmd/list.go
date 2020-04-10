@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const listPattern = "%-20s %s\n"
+const listPattern = "%-40s %s\n"
 
 // listCmd represents the list command
 var listCmd = &cobra.Command{
