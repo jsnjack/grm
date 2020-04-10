@@ -60,12 +60,17 @@ func downloadFile(url string, filename string) (string, error) {
 
 func installBinary(filename string) (string, error) {
 	fmt.Printf("Installing in %s...\n", DefaultBinDir)
-	cmdCp := exec.Command("/bin/sh", "-c", fmt.Sprintf("sudo cp %s %s", filename, DefaultBinDir))
-	err := cmdCp.Run()
+	installedFile := fmt.Sprintf("%s%s", DefaultBinDir, filepath.Base(filename))
+	cmdRm := exec.Command("/bin/sh", "-c", fmt.Sprintf("sudo rm -f %s", installedFile))
+	err := cmdRm.Run()
 	if err != nil {
 		return "", err
 	}
-	installedFile := fmt.Sprintf("%s%s", DefaultBinDir, filepath.Base(filename))
+	cmdCp := exec.Command("/bin/sh", "-c", fmt.Sprintf("sudo cp %s %s", filename, DefaultBinDir))
+	err = cmdCp.Run()
+	if err != nil {
+		return "", err
+	}
 	cmd := exec.Command("/bin/sh", "-c", "sudo chmod +x "+installedFile)
 	err = cmd.Run()
 	return installedFile, err
