@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const listPattern = "%-40s %s\n"
+const listPattern = "%-40s %-20s %s\n"
 
 // listCmd represents the list command
 var listCmd = &cobra.Command{
@@ -18,9 +18,9 @@ var listCmd = &cobra.Command{
 			return err
 		}
 		if len(pkgs) > 0 {
-			fmt.Printf(listPattern, "Package", "Version")
+			fmt.Printf(listPattern, "Package", "Version", "Filter")
 			for _, p := range pkgs {
-				fmt.Printf(listPattern, p.Owner+"/"+p.Repo, p.Version)
+				fmt.Printf(listPattern, p.Owner+"/"+p.Repo, p.Version, p.Filter)
 			}
 		}
 		return nil
