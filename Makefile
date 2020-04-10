@@ -12,7 +12,7 @@ endif
 
 .ONESHELL:
 bin/${BINARY}: version main.go cmd/*.go
-	go build -ldflags="-X main.Version=${VERSION}" -o bin/${BINARY}
+	go build -ldflags="-X github.com/jsnjack/grm/cmd.Version=${VERSION}" -o bin/${BINARY}
 
 build: bin/${BINARY}
 
