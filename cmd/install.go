@@ -102,11 +102,8 @@ func installRelease(release *github.RepositoryRelease, pkg *Package) error {
 	// Install package
 	var installedFile string
 	switch asset.GetContentType() {
-	case "application/octet-stream":
-		installedFile, err = Application(asset)
-		break
-	case "application/zip", "application/gzip":
-		installedFile, err = Archive(asset)
+	case "application/octet-stream", "application/zip", "application/gzip":
+		installedFile, err = Install(asset)
 		break
 	default:
 		err = fmt.Errorf("Unsupported type: %s", asset.GetContentType())
