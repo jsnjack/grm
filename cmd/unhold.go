@@ -9,7 +9,7 @@ import (
 
 // unholdCmd represents the unhold command
 var unholdCmd = &cobra.Command{
-	Use:   "unhold",
+	Use:   "unhold <package> [<package>...]",
 	Short: "Unhold a package",
 	Args: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceErrors = true

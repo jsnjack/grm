@@ -18,7 +18,7 @@ const infoPattern = "%-20s %s\n"
 // infoCmd represents the info command
 var infoCmd = &cobra.Command{
 	Use:   "info <package>",
-	Short: "Show information about a package and a release",
+	Short: "Show information about a package",
 	Args: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceErrors = true
 		if len(args) < 1 {

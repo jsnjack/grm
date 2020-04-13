@@ -9,7 +9,7 @@ import (
 
 // removeCmd represents the remove command
 var removeCmd = &cobra.Command{
-	Use:   "remove",
+	Use:   "remove <package> [<package>...]",
 	Short: "Remove a package",
 	Args: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceErrors = true

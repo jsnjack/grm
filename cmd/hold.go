@@ -9,8 +9,9 @@ import (
 
 // holdCmd represents the hold command
 var holdCmd = &cobra.Command{
-	Use:   "hold",
-	Short: "Hold a package on current version",
+	Use:   "hold <package> [<package>...]",
+	Short: "Hold a package",
+	Long:  "Held back packages cannot be installed, removed, or updated unless the hold mark is removed",
 	Args: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceErrors = true
 		if len(args) == 0 {

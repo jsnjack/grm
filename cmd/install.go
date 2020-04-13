@@ -13,7 +13,7 @@ var installFilter string
 
 // installCmd represents the install command
 var installCmd = &cobra.Command{
-	Use:   "install <package...>",
+	Use:   "install <package> [<package>...]",
 	Short: "Install a package from github releases",
 	Args: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceErrors = true

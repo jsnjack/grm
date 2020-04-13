@@ -8,7 +8,7 @@ import (
 
 // updateCmd represents the update command
 var updateCmd = &cobra.Command{
-	Use:   "update",
+	Use:   "update [<package>]",
 	Short: "Update installed packages",
 	Args: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceErrors = true
@@ -41,7 +41,7 @@ var updateCmd = &cobra.Command{
 			}
 			fmt.Printf("Checking %s/%s...\n", p.Owner, p.Repo)
 			if p.Hold == "true" {
-				fmt.Println("  on hold")
+				fmt.Println("  held back")
 				continue
 			}
 			release, err := selectRelease(&Package{Owner: p.Owner, Repo: p.Repo})
