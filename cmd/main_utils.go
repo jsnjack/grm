@@ -61,8 +61,7 @@ func downloadFile(url string, filename string) (string, error) {
 func installBinary(filename string) (string, error) {
 	fmt.Printf("Installing in %s...\n", DefaultBinDir)
 	installedFile := fmt.Sprintf("%s%s", DefaultBinDir, filepath.Base(filename))
-	cmdRm := exec.Command("/bin/sh", "-c", fmt.Sprintf("sudo rm -f %s", installedFile))
-	err := cmdRm.Run()
+	err := removeBinary(installedFile)
 	if err != nil {
 		return "", err
 	}
@@ -74,6 +73,12 @@ func installBinary(filename string) (string, error) {
 	cmd := exec.Command("/bin/sh", "-c", "sudo chmod +x "+installedFile)
 	err = cmd.Run()
 	return installedFile, err
+}
+
+func removeBinary(filename string) error {
+	cmdRm := exec.Command("/bin/sh", "-c", fmt.Sprintf("sudo rm -f %s", filename))
+	err := cmdRm.Run()
+	return err
 }
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
