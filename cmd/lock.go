@@ -7,11 +7,11 @@ import (
 	bolt "go.etcd.io/bbolt"
 )
 
-// holdCmd represents the hold command
-var holdCmd = &cobra.Command{
-	Use:   "hold <package> [<package>...]",
-	Short: "Hold a package",
-	Long:  "Held back packages cannot be installed, removed, or updated unless the hold mark is removed",
+// lockCmd represents the lock command
+var lockCmd = &cobra.Command{
+	Use:   "lock <package> [<package>...]",
+	Short: "Lock a package",
+	Long:  "Locked packages cannot be installed, removed, or updated unless the lock mark is removed",
 	Args: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceErrors = true
 		if len(args) == 0 {
@@ -37,7 +37,7 @@ var holdCmd = &cobra.Command{
 						if pb == nil {
 							return fmt.Errorf("Bucket %s doesn't exist", item)
 						}
-						pb.Put([]byte("hold"), []byte("true"))
+						pb.Put([]byte("locked"), []byte("true"))
 						return nil
 					}
 				}
@@ -52,5 +52,5 @@ var holdCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(holdCmd)
+	rootCmd.AddCommand(lockCmd)
 }

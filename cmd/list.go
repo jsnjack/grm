@@ -18,9 +18,9 @@ var listCmd = &cobra.Command{
 			return err
 		}
 		if len(pkgs) > 0 {
-			fmt.Printf(listPattern, "Package", "Version", "Filter", "Hold")
+			fmt.Printf(listPattern, "Package", "Version", "Filter", "Locked")
 			for _, p := range pkgs {
-				fmt.Printf(listPattern, p.Owner+"/"+p.Repo, p.Version, p.Filter, p.Hold)
+				fmt.Printf(listPattern, p.Owner+"/"+p.Repo, p.Version, p.Filter, p.Locked)
 			}
 		}
 		return nil

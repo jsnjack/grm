@@ -40,7 +40,7 @@ var updateCmd = &cobra.Command{
 				}
 			}
 			fmt.Printf("Checking %s/%s...\n", p.Owner, p.Repo)
-			if p.Hold == "true" {
+			if p.Locked == "true" {
 				fmt.Println("  held back")
 				continue
 			}

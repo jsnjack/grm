@@ -56,9 +56,9 @@ func createPackageFromDB(name string, b *bolt.Bucket) (*Package, error) {
 	}
 	p.Version = string(b.Get([]byte("version")))
 	p.Filter = string(b.Get([]byte("filter")))
-	hold := b.Get([]byte("hold"))
-	if hold != nil {
-		p.Hold = string(b.Get([]byte("hold")))
+	locked := b.Get([]byte("locked"))
+	if locked != nil {
+		p.Locked = string(b.Get([]byte("lock")))
 	}
 	return p, nil
 }

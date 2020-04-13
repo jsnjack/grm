@@ -7,10 +7,10 @@ import (
 	bolt "go.etcd.io/bbolt"
 )
 
-// unholdCmd represents the unhold command
-var unholdCmd = &cobra.Command{
-	Use:   "unhold <package> [<package>...]",
-	Short: "Unhold a package",
+// unlockCmd represents the unlock command
+var unlockCmd = &cobra.Command{
+	Use:   "unlock <package> [<package>...]",
+	Short: "Unlock a package",
 	Args: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceErrors = true
 		if len(args) == 0 {
@@ -36,7 +36,7 @@ var unholdCmd = &cobra.Command{
 						if pb == nil {
 							return fmt.Errorf("Bucket %s doesn't exist", item)
 						}
-						pb.Put([]byte("hold"), []byte(""))
+						pb.Put([]byte("locked"), []byte(""))
 						return nil
 					}
 				}
@@ -51,5 +51,5 @@ var unholdCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(unholdCmd)
+	rootCmd.AddCommand(unlockCmd)
 }
