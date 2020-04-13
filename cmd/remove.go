@@ -27,7 +27,7 @@ var removeCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 		for _, item := range args {
-			var location string
+			var pkg *Package
 			// Retrieve binary location
 			err := DB.View(func(tx *bolt.Tx) error {
 				b := tx.Bucket([]byte(PackagesBucket))
@@ -38,7 +38,11 @@ var removeCmd = &cobra.Command{
 						if pb == nil {
 							return fmt.Errorf("Bucket %s doesn't exist", item)
 						}
-						location = string(pb.Get([]byte("filename")))
+						p, err := createPackageFromDB(item, pb)
+						if err != nil {
+							return err
+						}
+						pkg = p
 						return nil
 					}
 				}
@@ -47,11 +51,15 @@ var removeCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
+			if pkg.Locked == "true" {
+				fmt.Printf("Package %s is locked\n", pkg.GetFullName())
+				continue
+			}
 			if ok := askForConfirmation(fmt.Sprintf("Are you sure you want to remove %s?", item)); !ok {
 				return nil
 			}
 			// Remove binary
-			err = removeBinary(location)
+			err = removeBinary(pkg.Filename)
 			if err != nil {
 				return err
 			}

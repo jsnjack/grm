@@ -30,12 +30,28 @@ var installCmd = &cobra.Command{
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
+		installedPkgs, err := loadAllInstalledFromDB()
+		if err != nil {
+			return err
+		}
+	argsLoop:
 		for _, item := range args {
 			pkg, err := CreatePackage(item)
 			if err != nil {
 				return err
 			}
 			pkg.Filter = installFilter
+
+			// Check that package is not locked
+			for _, installedItem := range installedPkgs {
+				if installedItem.GetFullName() == pkg.GetFullName() {
+					if installedItem.Locked == "true" {
+						fmt.Printf("Package %s is locked\n", pkg.GetFullName())
+						continue argsLoop
+					}
+				}
+			}
+
 			// Select the release based on version
 			release, err := selectRelease(pkg)
 			if err != nil {

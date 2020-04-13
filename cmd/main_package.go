@@ -7,11 +7,12 @@ import (
 
 // Package represents github package
 type Package struct {
-	Repo    string
-	Owner   string
-	Version string
-	Filter  string
-	Locked  string
+	Repo     string
+	Owner    string
+	Version  string
+	Filter   string
+	Locked   string
+	Filename string
 }
 
 // GetFullName returns full package name, e.g. jsnjack/kazy-go

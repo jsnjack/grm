@@ -41,7 +41,7 @@ var updateCmd = &cobra.Command{
 			}
 			fmt.Printf("Checking %s/%s...\n", p.Owner, p.Repo)
 			if p.Locked == "true" {
-				fmt.Println("  held back")
+				fmt.Println("  locked")
 				continue
 			}
 			release, err := selectRelease(&Package{Owner: p.Owner, Repo: p.Repo})
