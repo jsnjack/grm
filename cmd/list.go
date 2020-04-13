@@ -13,7 +13,7 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List installed packages",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		pkgs, err := loadInstalledFromDB()
+		pkgs, err := loadAllInstalledFromDB()
 		if err != nil {
 			return err
 		}

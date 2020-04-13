@@ -11,6 +11,7 @@ type Package struct {
 	Owner   string
 	Version string
 	Filter  string
+	Hold    string
 }
 
 // GetFullName returns full package name, e.g. jsnjack/kazy-go
