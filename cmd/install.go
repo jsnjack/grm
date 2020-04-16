@@ -85,7 +85,7 @@ func selectAsset(assets []*github.ReleaseAsset, filter string) (*github.ReleaseA
 		fmt.Printf("  %s (%s)\n", item.GetName(), item.GetContentType())
 		if strings.Contains(item.GetName(), filter) {
 			switch item.GetContentType() {
-			case "application/octet-stream", "application/zip", "application/gzip":
+			case "application/octet-stream", "application/zip", "application/gzip", "application/x-gzip":
 				return item, nil
 			}
 		}
