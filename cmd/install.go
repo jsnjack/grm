@@ -118,7 +118,7 @@ func installRelease(release *github.RepositoryRelease, pkg *Package) error {
 	// Install package
 	var installedFile string
 	switch asset.GetContentType() {
-	case "application/octet-stream", "application/zip", "application/gzip":
+	case "application/octet-stream", "application/zip", "application/gzip", "application/x-gzip":
 		installedFile, err = Install(asset)
 		break
 	default:
