@@ -57,7 +57,10 @@ var updateCmd = &cobra.Command{
 				}
 
 				// p.Version doesn't matter
-				installRelease(release, p)
+				err = installRelease(release, p)
+				if err != nil {
+					fmt.Println(err)
+				}
 			}
 		}
 		return nil
