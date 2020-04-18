@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"encoding/json"
+
 	bolt "go.etcd.io/bbolt"
 )
 
-func saveToDB(pkg *Package, filter string, filename string, version string) error {
+func saveToDB(pkg *Package, filter []string, filename string, version string) error {
 	err := DB.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(PackagesBucket)
 
@@ -16,7 +18,11 @@ func saveToDB(pkg *Package, filter string, filename string, version string) erro
 		if err != nil {
 			return err
 		}
-		err = pb.Put([]byte("filter"), []byte(filter))
+		bFilter, err := json.Marshal(filter)
+		if err != nil {
+			return err
+		}
+		err = pb.Put([]byte("filter"), bFilter)
 		if err != nil {
 			return err
 		}
@@ -55,11 +61,14 @@ func createPackageFromDB(name string, b *bolt.Bucket) (*Package, error) {
 		return nil, err
 	}
 	p.Version = string(b.Get([]byte("version")))
-	p.Filter = string(b.Get([]byte("filter")))
 	p.Filename = string(b.Get([]byte("flename")))
 	locked := b.Get([]byte("locked"))
 	if locked != nil {
 		p.Locked = string(locked)
+	}
+	err = json.Unmarshal(b.Get([]byte("filter")), &(p.Filter))
+	if err != nil {
+		return nil, err
 	}
 	return p, nil
 }

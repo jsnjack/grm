@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var installFilter string
+var installFilter []string
 
 // installCmd represents the install command
 var installCmd = &cobra.Command{
@@ -80,22 +80,31 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	installCmd.Flags().StringVarP(&installFilter, "filter", "f", "", "Asset's name must contain provided string, e.g. 'Linux-64bit'")
+	installCmd.Flags().StringSliceVarP(
+		&installFilter, "filter", "f", installFilter,
+		`Asset's name should contain provided strings,
+e.g. 'linux'. Filtering is case insensitive
+and not strict, meaning if none of the assets
+contain provided filter, all of them are
+considered suitable`,
+	)
 }
 
-func selectAsset(assets []*github.ReleaseAsset, filter string) (*github.ReleaseAsset, error) {
+func selectAsset(assets []*github.ReleaseAsset, filter []string) (*github.ReleaseAsset, error) {
 	// Get all available assets
 	assetNames := []string{}
 	for _, item := range assets {
 		assetNames = append(assetNames, item.GetName())
 	}
 
-	filtered := []string{}
-	if filter != "" {
-		filtered = filterList(assetNames, filter, true)
+	filtered := assetNames
+	if len(filter) != 0 {
+		for _, item := range filter {
+			filtered = filterList(filtered, item, false)
+		}
 	} else {
 		// Filter by operating system
-		filtered = filterList(assetNames, runtime.GOOS, false)
+		filtered = filterList(filtered, runtime.GOOS, false)
 		// Filter by architecture
 		filtered = filterList(filtered, runtime.GOARCH, false)
 		// Extra filters

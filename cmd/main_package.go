@@ -10,7 +10,7 @@ type Package struct {
 	Repo     string
 	Owner    string
 	Version  string
-	Filter   string
+	Filter   []string
 	Locked   string
 	Filename string
 }
