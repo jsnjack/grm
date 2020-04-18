@@ -26,7 +26,7 @@ var listCmd = &cobra.Command{
 					p.Owner+"/"+p.Repo,
 					p.Version,
 					p.Locked,
-					fmt.Sprintf(strings.Join(p.Filter, ", "))
+					fmt.Sprintf(strings.Join(p.Filter, ", ")),
 				)
 			}
 		}
