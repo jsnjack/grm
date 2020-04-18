@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/schollz/progressbar/v2"
@@ -109,6 +110,28 @@ func generateRandomString(n int) string {
 	return string(b)
 }
 
+func askForNumber(msg string, to int) int {
+	if rootYes {
+		return 0
+	}
+	fmt.Printf("%s [0-%d] ", msg, to)
+	var response string
+	_, err := fmt.Scanln(&response)
+	if err != nil {
+		log.Fatal(err)
+	}
+	responseInt, err := strconv.Atoi(response)
+	if err != nil {
+		fmt.Printf("  Provide a number (%s)\n", err)
+		return askForNumber(msg, to)
+	}
+	if responseInt > to || responseInt < 0 {
+		fmt.Println("  Out of range")
+		return askForNumber(msg, to)
+	}
+	return responseInt
+}
+
 func askForConfirmation(msg string) bool {
 	if rootYes {
 		return true
@@ -126,7 +149,7 @@ func askForConfirmation(msg string) bool {
 	} else if containsString(nokayResponses, response) {
 		return false
 	} else {
-		fmt.Println("Please type yes or no and then press enter:")
+		fmt.Println("  Please type yes or no and then press enter:")
 		return askForConfirmation(msg)
 	}
 }

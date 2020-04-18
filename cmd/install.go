@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"strings"
 
 	"github.com/google/go-github/v30/github"
@@ -81,16 +82,78 @@ func init() {
 }
 
 func selectAsset(assets []*github.ReleaseAsset, filter string) (*github.ReleaseAsset, error) {
+	// Get all available assets
+	assetNames := []string{}
 	for _, item := range assets {
-		fmt.Printf("  %s (%s)\n", item.GetName(), item.GetContentType())
-		if strings.Contains(item.GetName(), filter) {
-			switch item.GetContentType() {
-			case "application/octet-stream", "application/zip", "application/gzip", "application/x-gzip":
-				return item, nil
+		assetNames = append(assetNames, item.GetName())
+	}
+
+	filtered := []string{}
+	if filter != "" {
+		filtered = filterList(assetNames, filter, true)
+	} else {
+		// Filter by operating system
+		filtered = filterList(assetNames, runtime.GOOS, false)
+		// Filter by architecture
+		filtered = filterList(filtered, runtime.GOARCH, false)
+		// Extra filters
+		if runtime.GOARCH == "amd64" {
+			filtered = filterList(filtered, "64", false)
+		}
+		if runtime.GOARCH == "386" {
+			filtered = filterList(filtered, "32", false)
+		}
+	}
+
+	// Print suitable assets
+	fmt.Printf("Found %d suitable assets\n", len(filtered))
+	for id, item := range filtered {
+		fmt.Printf("  %d) %s\n", id, item)
+	}
+
+	// Select the asset
+	var selected string
+	switch len(filtered) {
+	case 0:
+		return nil, fmt.Errorf("Supported asset not found")
+	case 1:
+		selected = filtered[0]
+		break
+	default:
+		selected = filtered[askForNumber("Select suitable asset:", len(filtered)-1)]
+	}
+
+	fmt.Printf("Selected asset: %s\n", selected)
+	for _, item := range assets {
+		if item.GetName() == selected {
+			return item, nil
+		}
+	}
+
+	return nil, fmt.Errorf("Unexpected error when selecting the asset")
+}
+
+// filterList filters list by `filter`. If `strict` is false returns original
+// list in case if it doesn't contain `filter`
+func filterList(list []string, filter string, strict bool) []string {
+	filtered := []string{}
+	if filter == "" {
+		filtered = list
+	} else {
+		for _, item := range list {
+			litem := strings.ToLower(item)
+			if strings.Contains(litem, filter) {
+				filtered = append(filtered, item)
 			}
 		}
 	}
-	return nil, fmt.Errorf("Supported asset not found")
+	if strict {
+		return filtered
+	}
+	if len(filtered) == 0 {
+		filtered = list
+	}
+	return filtered
 }
 
 func selectRelease(pkg *Package) (*github.RepositoryRelease, error) {
@@ -112,8 +175,6 @@ func installRelease(release *github.RepositoryRelease, pkg *Package) error {
 	if err != nil {
 		return err
 	}
-
-	fmt.Printf("Found asset %s\n", asset.GetName())
 
 	// Install package
 	var installedFile string
