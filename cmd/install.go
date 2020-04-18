@@ -61,7 +61,9 @@ var installCmd = &cobra.Command{
 			fmt.Printf("Found release %s\n", release.GetTagName())
 
 			err = installRelease(release, pkg)
-			return err
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	},
