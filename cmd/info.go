@@ -10,7 +10,7 @@ import (
 )
 
 var infoAll bool
-var infoShort bool
+var infoLong bool
 
 const infoAllPattern = "%-15s%-15s%-15s%s"
 const infoPattern = "%-20s %s\n"
@@ -49,7 +49,7 @@ var infoCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			if infoShort {
+			if !infoLong {
 				fmt.Println(release.GetTagName())
 				for _, item := range release.Assets {
 					fmt.Printf("  %s\n", item.GetName())
@@ -97,6 +97,6 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// infoCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	infoCmd.Flags().BoolVarP(&infoAll, "all", "a", false, "Display all releases")
-	infoCmd.Flags().BoolVarP(&infoShort, "short", "s", false, "Display in compact format")
+	infoCmd.Flags().BoolVarP(&infoAll, "all", "a", false, "Display all latest releases")
+	infoCmd.Flags().BoolVarP(&infoLong, "long", "l", false, "Display in long format")
 }
