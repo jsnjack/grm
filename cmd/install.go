@@ -11,6 +11,7 @@ import (
 )
 
 var installFilter []string
+var installRefresh bool
 
 // installCmd represents the install command
 var installCmd = &cobra.Command{
@@ -60,6 +61,18 @@ var installCmd = &cobra.Command{
 			}
 			fmt.Printf("Found release %s\n", release.GetTagName())
 
+			if !installRefresh {
+				// Check if package of selected release has already been installed
+				for _, installedItem := range installedPkgs {
+					if installedItem.GetFullName() == pkg.GetFullName() {
+						if installedItem.Version == release.GetTagName() {
+							fmt.Printf("Package %s already at %s\n", installedItem.GetFullName(), installedItem.Version)
+							continue argsLoop
+						}
+					}
+				}
+			}
+
 			err = installRelease(release, pkg)
 			if err != nil {
 				return err
@@ -88,6 +101,7 @@ and not strict, meaning if none of the assets
 contain provided filter, all of them are
 considered suitable`,
 	)
+	installCmd.Flags().BoolVarP(&installRefresh, "refresh", "r", false, "Reinstall package")
 }
 
 func selectAsset(assets []*github.ReleaseAsset, filter []string) (*github.ReleaseAsset, error) {
