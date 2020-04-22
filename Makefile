@@ -17,7 +17,7 @@ bin/${BINARY}: version main.go cmd/*.go
 build: bin/${BINARY}
 
 release: build
-	grm -f bin/${BINARY} -r jsnjack/grm -t "v`monova`"
+	grm jsnjack/grm -f bin/${BINARY} -t "v`monova`"
 
 .ONESHELL:
 viewdb:
