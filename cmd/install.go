@@ -16,7 +16,7 @@ var installRefresh bool
 // installCmd represents the install command
 var installCmd = &cobra.Command{
 	Use:   "install <package> [<package>...]",
-	Short: "Install a package from github releases",
+	Short: "Install a package from GitHub releases",
 	Args: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceErrors = true
 		if len(args) == 0 {

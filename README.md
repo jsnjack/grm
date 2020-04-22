@@ -9,7 +9,7 @@ grm
 ### How to use it?
 ```bash
 $ ./grm
-A package installer for github releases
+A package manager for GitHub releases
 
 Usage:
   grm [command]
@@ -17,9 +17,10 @@ Usage:
 Available Commands:
   help        Help about any command
   info        Show information about a package
-  install     Install a package from github releases
+  install     Install a package from GitHub releases
   list        List installed packages
   lock        Lock a package
+  release     Create a release in GitHub
   remove      Remove a package
   unlock      Unlock a package
   update      Update installed packages
@@ -28,6 +29,7 @@ Available Commands:
 Flags:
   -h, --help   help for grm
   -y, --yes    Confirm all
+
 ```
 
 #### How to install specific version of hugo?

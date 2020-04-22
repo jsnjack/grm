@@ -23,7 +23,7 @@ var rootYes bool
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "grm",
-	Short: "A package installer for github releases",
+	Short: "A package manager for GitHub releases",
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
