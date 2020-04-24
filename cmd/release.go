@@ -91,11 +91,16 @@ var releaseCmd = &cobra.Command{
 				progressbar.OptionSetBytes(int(stat.Size())),
 			)
 
+			reader := &ProgressReader{
+				r:   f,
+				bar: bar,
+			}
+
 			u := fmt.Sprintf("repos/%s/%s/releases/%d/assets?name=%s", pkg.Owner, pkg.Repo, release.GetID(), filepath.Base(item))
 
 			mediaType := mime.TypeByExtension(filepath.Ext(f.Name()))
 
-			req, err := client.NewUploadRequest(u, bar, stat.Size(), mediaType)
+			req, err := client.NewUploadRequest(u, reader, stat.Size(), mediaType)
 			if err != nil {
 				return err
 			}

@@ -169,3 +169,15 @@ func posString(slice []string, element string) int {
 func containsString(slice []string, element string) bool {
 	return !(posString(slice, element) == -1)
 }
+
+// ProgressReader is a reader that prints progress
+type ProgressReader struct {
+	r   io.Reader
+	bar *progressbar.ProgressBar
+}
+
+func (pr *ProgressReader) Read(p []byte) (int, error) {
+	n, err := pr.r.Read(p)
+	pr.bar.Add(n)
+	return n, err
+}
