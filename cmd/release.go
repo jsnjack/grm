@@ -60,10 +60,15 @@ var releaseCmd = &cobra.Command{
 
 		client := github.NewClient(tc)
 
-		// Create a release first
-		release, _, err := client.Repositories.CreateRelease(ctx, pkg.Owner, pkg.Repo, &github.RepositoryRelease{
-			TagName: &releaseTag,
-		})
+		// Try to get existing release
+		release, _, err := client.Repositories.GetReleaseByTag(ctx, pkg.Owner, pkg.Repo, releaseTag)
+		if err != nil {
+			// Create a release first
+			release, _, err = client.Repositories.CreateRelease(ctx, pkg.Owner, pkg.Repo, &github.RepositoryRelease{
+				TagName: &releaseTag,
+			})
+		}
+
 		if err != nil {
 			return err
 		}
@@ -95,6 +100,7 @@ var releaseCmd = &cobra.Command{
 				r:   f,
 				bar: bar,
 			}
+			defer bar.Clear()
 
 			u := fmt.Sprintf("repos/%s/%s/releases/%d/assets?name=%s", pkg.Owner, pkg.Repo, release.GetID(), filepath.Base(item))
 
