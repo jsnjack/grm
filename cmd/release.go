@@ -116,7 +116,7 @@ var releaseCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Println("")
+			fmt.Println("  done")
 		}
 
 		return nil
