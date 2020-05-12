@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/mholt/archiver/v3"
+	"github.com/jsnjack/archiver/v3"
 )
 
 func installArchive(filename string) (string, error) {
@@ -13,16 +13,16 @@ func installArchive(filename string) (string, error) {
 	filenameA := ""
 	err := archiver.Walk(filename, func(f archiver.File) error {
 		if f.IsDir() {
-			fmt.Printf("  %-40s %s\n", f.Name(), "dir")
+			fmt.Printf("  %-40s %s\n", f.Path, "dir")
 			return nil
 		}
 		ct, err := getFileContentType(f)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("  %-40s %s\n", f.Name(), ct)
+		fmt.Printf("  %-40s %s\n", f.Path, ct)
 		if filenameA == "" && ct == "application/octet-stream" {
-			filenameA = f.Name()
+			filenameA = f.Path
 		}
 		return nil
 	})
