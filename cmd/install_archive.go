@@ -12,6 +12,10 @@ func installArchive(filename string) (string, error) {
 	fmt.Println("Looking for a binary file...")
 	filenameA := ""
 	err := archiver.Walk(filename, func(f archiver.File) error {
+		if f.IsDir() {
+			fmt.Printf("  %-40s %s\n", f.Name(), "dir")
+			return nil
+		}
 		ct, err := getFileContentType(f)
 		if err != nil {
 			return err
