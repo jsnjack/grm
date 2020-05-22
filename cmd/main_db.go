@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"encoding/json"
+	"fmt"
+	"strconv"
 
 	bolt "go.etcd.io/bbolt"
 )
@@ -71,4 +73,23 @@ func createPackageFromDB(name string, b *bolt.Bucket) (*Package, error) {
 		return nil, err
 	}
 	return p, nil
+}
+
+func setPackageLock(status bool, name string) error {
+	err := DB.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(PackagesBucket))
+		c := b.Cursor()
+		for key, _ := c.First(); key != nil; key, _ = c.Next() {
+			if string(key) == name {
+				pb := b.Bucket(key)
+				if pb == nil {
+					return fmt.Errorf("Bucket %s doesn't exist", name)
+				}
+				pb.Put([]byte("locked"), []byte(strconv.FormatBool(status)))
+				return nil
+			}
+		}
+		return fmt.Errorf("Package %s is not installed", name)
+	})
+	return err
 }

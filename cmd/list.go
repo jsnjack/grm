@@ -25,7 +25,7 @@ var listCmd = &cobra.Command{
 					listPattern,
 					p.Owner+"/"+p.Repo,
 					p.Version,
-					p.Locked,
+					p.GetVerboseLocked(),
 					fmt.Sprintf(strings.Join(p.Filter, ", ")),
 				)
 			}

@@ -20,6 +20,22 @@ func (p *Package) GetFullName() string {
 	return p.Owner + "/" + p.Repo
 }
 
+// GetVerboseLocked returns print-friendly value
+func (p *Package) GetVerboseLocked() string {
+	if p.Locked == "false" {
+		return ""
+	}
+	return p.Locked
+}
+
+// IsLocked returns if package version is locked
+func (p *Package) IsLocked() bool {
+	if p.Locked == "true" {
+		return true
+	}
+	return false
+}
+
 // CreatePackage creates new Package instance from a string
 // jsnjack/kazy-go==v1.1.0
 func CreatePackage(text string) (*Package, error) {

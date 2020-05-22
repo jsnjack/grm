@@ -51,7 +51,7 @@ var removeCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			if pkg.Locked == "true" {
+			if pkg.IsLocked() {
 				fmt.Printf("Package %s is locked\n", pkg.GetFullName())
 				continue
 			}

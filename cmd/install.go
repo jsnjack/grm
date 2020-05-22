@@ -12,6 +12,7 @@ import (
 
 var installFilter []string
 var installRefresh bool
+var installLock bool
 
 // installCmd represents the install command
 var installCmd = &cobra.Command{
@@ -47,7 +48,7 @@ var installCmd = &cobra.Command{
 			// Check that package is not locked
 			for _, installedItem := range installedPkgs {
 				if installedItem.GetFullName() == pkg.GetFullName() {
-					if installedItem.Locked == "true" {
+					if installedItem.IsLocked() {
 						fmt.Printf("Package %s is locked\n", pkg.GetFullName())
 						continue argsLoop
 					}
@@ -77,6 +78,10 @@ var installCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
+
+			if installLock {
+				setPackageLock(true, pkg.GetFullName())
+			}
 		}
 		return nil
 	},
@@ -102,6 +107,7 @@ contain provided filter, all of them are
 considered suitable`,
 	)
 	installCmd.Flags().BoolVarP(&installRefresh, "refresh", "r", false, "Reinstall package")
+	installCmd.Flags().BoolVarP(&installLock, "lock", "l", false, "Lock package version")
 }
 
 func selectAsset(assets []*github.ReleaseAsset, filter []string) (*github.ReleaseAsset, error) {
