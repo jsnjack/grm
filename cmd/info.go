@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/google/go-github/v30/github"
+	"github.com/google/go-github/v32/github"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +32,7 @@ var infoCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		client := github.NewClient(nil)
+		client := CreateClient("")
 		if infoAll {
 			opt := &github.ListOptions{}
 			releases, _, err := client.Repositories.ListReleases(context.Background(), pkg.Owner, pkg.Repo, opt)

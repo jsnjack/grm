@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -12,7 +13,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/google/go-github/v32/github"
 	"github.com/schollz/progressbar/v2"
+	"golang.org/x/oauth2"
 )
 
 // DefaultBinDir is the default location for binary files
@@ -180,4 +183,24 @@ func (pr *ProgressReader) Read(p []byte) (int, error) {
 	n, err := pr.r.Read(p)
 	pr.bar.Add(n)
 	return n, err
+}
+
+// CreateClient creates github client instance. It will try to use GITHUB_TOKEN
+// environment variable to create authenticated client (no rate limits)
+func CreateClient(token string) *github.Client {
+	// Retrieve GitHub API token
+	if token == "" {
+		token = os.Getenv("GITHUB_TOKEN")
+	}
+	if token == "" {
+		return github.NewClient(nil)
+	}
+
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: token},
+	)
+	tc := oauth2.NewClient(ctx, ts)
+
+	return github.NewClient(tc)
 }

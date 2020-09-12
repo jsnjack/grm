@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/google/go-github/v30/github"
+	"github.com/google/go-github/v32/github"
 )
 
 // Install installs binary from an asset

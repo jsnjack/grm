@@ -5,7 +5,7 @@ go 1.13
 require (
 	github.com/frankban/quicktest v1.10.0 // indirect
 	github.com/golang/protobuf v1.4.0 // indirect
-	github.com/google/go-github/v30 v30.1.0
+	github.com/google/go-github/v32 v32.1.0
 	github.com/jsnjack/archiver/v3 v3.4.1-0.20200512214934-1422a63fc1ba
 	github.com/mholt/archiver/v3 v3.3.0 // indirect
 	github.com/nwaples/rardecode v1.1.0 // indirect

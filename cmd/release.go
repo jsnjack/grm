@@ -7,10 +7,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/google/go-github/v30/github"
+	"github.com/google/go-github/v32/github"
 	"github.com/schollz/progressbar/v2"
 	"github.com/spf13/cobra"
-	"golang.org/x/oauth2"
 )
 
 var releaseFilename []string
@@ -44,27 +43,13 @@ var releaseCmd = &cobra.Command{
 			return err
 		}
 
-		// Retrieve GitHub API token
-		if releaseGithubToken == "" {
-			releaseGithubToken = os.Getenv("GITHUB_TOKEN")
-		}
-		if releaseGithubToken == "" {
-			return fmt.Errorf("Provide GitHub API token to create a release")
-		}
-
-		ctx := context.Background()
-		ts := oauth2.StaticTokenSource(
-			&oauth2.Token{AccessToken: releaseGithubToken},
-		)
-		tc := oauth2.NewClient(ctx, ts)
-
-		client := github.NewClient(tc)
+		client := CreateClient(releaseGithubToken)
 
 		// Try to get existing release
-		release, _, err := client.Repositories.GetReleaseByTag(ctx, pkg.Owner, pkg.Repo, releaseTag)
+		release, _, err := client.Repositories.GetReleaseByTag(context.Background(), pkg.Owner, pkg.Repo, releaseTag)
 		if err != nil {
 			// Create a release first
-			release, _, err = client.Repositories.CreateRelease(ctx, pkg.Owner, pkg.Repo, &github.RepositoryRelease{
+			release, _, err = client.Repositories.CreateRelease(context.Background(), pkg.Owner, pkg.Repo, &github.RepositoryRelease{
 				TagName: &releaseTag,
 			})
 		}
@@ -112,7 +97,7 @@ var releaseCmd = &cobra.Command{
 			}
 
 			asset := new(github.ReleaseAsset)
-			_, err = client.Do(ctx, req, asset)
+			_, err = client.Do(context.Background(), req, asset)
 			if err != nil {
 				return err
 			}

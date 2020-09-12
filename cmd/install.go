@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/google/go-github/v30/github"
+	"github.com/google/go-github/v32/github"
 	"github.com/spf13/cobra"
 )
 
@@ -188,7 +188,7 @@ func filterList(list []string, filter string, strict bool) []string {
 }
 
 func selectRelease(pkg *Package) (*github.RepositoryRelease, error) {
-	client := github.NewClient(nil)
+	client := CreateClient("")
 	if pkg.Version == "" {
 		// Get latest release
 		release, _, err := client.Repositories.GetLatestRelease(context.Background(), pkg.Owner, pkg.Repo)
