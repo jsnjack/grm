@@ -21,8 +21,8 @@ import (
 // DefaultBinDir is the default location for binary files
 const DefaultBinDir = "/usr/local/bin/"
 
-func downloadFile(url string, filename string) (string, error) {
-	req, err := http.NewRequest("GET", url, nil)
+func downloadFile(asset *github.ReleaseAsset) (string, error) {
+	req, err := http.NewRequest("GET", asset.GetBrowserDownloadURL(), nil)
 	if err != nil {
 		return "", err
 	}
@@ -42,7 +42,7 @@ func downloadFile(url string, filename string) (string, error) {
 	}
 
 	var out io.Writer
-	f, err := os.OpenFile(path+filename, os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(path+asset.GetName(), os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return "", err
 	}
@@ -59,7 +59,7 @@ func downloadFile(url string, filename string) (string, error) {
 		return "", err
 	}
 	fmt.Println("")
-	return path + filename, nil
+	return path + asset.GetName(), nil
 }
 
 func installBinary(filename string) (string, error) {

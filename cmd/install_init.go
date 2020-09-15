@@ -10,7 +10,7 @@ import (
 
 // Install installs binary from an asset
 func Install(asset *github.ReleaseAsset) (string, error) {
-	filename, err := downloadFile(asset.GetBrowserDownloadURL(), asset.GetName())
+	filename, err := downloadFile(asset)
 	if err != nil {
 		return "", err
 	}
