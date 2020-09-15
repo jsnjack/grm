@@ -9,8 +9,8 @@ import (
 )
 
 // Install installs binary from an asset
-func Install(asset *github.ReleaseAsset) (string, error) {
-	filename, err := downloadFile(asset)
+func Install(asset *github.ReleaseAsset, pkg *Package) (string, error) {
+	filename, err := downloadFile(asset, pkg)
 	if err != nil {
 		return "", err
 	}

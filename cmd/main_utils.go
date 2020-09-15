@@ -21,16 +21,13 @@ import (
 // DefaultBinDir is the default location for binary files
 const DefaultBinDir = "/usr/local/bin/"
 
-func downloadFile(asset *github.ReleaseAsset) (string, error) {
-	req, err := http.NewRequest("GET", asset.GetBrowserDownloadURL(), nil)
+func downloadFile(asset *github.ReleaseAsset, pkg *Package) (string, error) {
+	client := CreateClient("")
+	reader, _, err := client.Repositories.DownloadReleaseAsset(context.Background(), pkg.Owner, pkg.Repo, asset.GetID(), http.DefaultClient)
 	if err != nil {
 		return "", err
 	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
+	defer reader.Close()
 
 	// Create a directory
 	path := fmt.Sprintf("/tmp/grm.%s/", generateRandomString(6))
@@ -50,11 +47,11 @@ func downloadFile(asset *github.ReleaseAsset) (string, error) {
 	defer f.Close()
 
 	bar := progressbar.NewOptions(
-		int(resp.ContentLength),
-		progressbar.OptionSetBytes(int(resp.ContentLength)),
+		asset.GetSize(),
+		progressbar.OptionSetBytes(asset.GetSize()),
 	)
 	out = io.MultiWriter(out, bar)
-	_, err = io.Copy(out, resp.Body)
+	_, err = io.Copy(out, reader)
 	if err != nil {
 		return "", err
 	}
