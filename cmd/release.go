@@ -14,7 +14,6 @@ import (
 
 var releaseFilename []string
 var releaseTag string
-var releaseGithubToken string
 
 // releaseCmd represents the release command
 var releaseCmd = &cobra.Command{
@@ -43,7 +42,7 @@ var releaseCmd = &cobra.Command{
 			return err
 		}
 
-		client := CreateClient(releaseGithubToken)
+		client := CreateClient()
 
 		// Try to get existing release
 		release, _, err := client.Repositories.GetReleaseByTag(context.Background(), pkg.Owner, pkg.Repo, releaseTag)
@@ -116,6 +115,4 @@ func init() {
 
 	releaseCmd.Flags().StringVarP(&releaseTag, "tag", "t", "", "Tag name")
 	releaseCmd.MarkFlagRequired("tag")
-
-	releaseCmd.Flags().StringVarP(&releaseGithubToken, "token", "g", "", "GitHub API token")
 }

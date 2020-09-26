@@ -32,7 +32,7 @@ var infoCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		client := CreateClient("")
+		client := CreateClient()
 		if infoAll {
 			opt := &github.ListOptions{}
 			releases, _, err := client.Repositories.ListReleases(context.Background(), pkg.Owner, pkg.Repo, opt)

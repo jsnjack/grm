@@ -22,7 +22,7 @@ import (
 const DefaultBinDir = "/usr/local/bin/"
 
 func downloadFile(asset *github.ReleaseAsset, pkg *Package) (string, error) {
-	client := CreateClient("")
+	client := CreateClient()
 	reader, _, err := client.Repositories.DownloadReleaseAsset(context.Background(), pkg.Owner, pkg.Repo, asset.GetID(), http.DefaultClient)
 	if err != nil {
 		return "", err
@@ -184,8 +184,9 @@ func (pr *ProgressReader) Read(p []byte) (int, error) {
 
 // CreateClient creates github client instance. It will try to use GITHUB_TOKEN
 // environment variable to create authenticated client (no rate limits)
-func CreateClient(token string) *github.Client {
+func CreateClient() *github.Client {
 	// Retrieve GitHub API token
+	token := rootToken
 	if token == "" {
 		token = os.Getenv("GITHUB_TOKEN")
 	}

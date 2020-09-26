@@ -19,6 +19,7 @@ var PackagesBucket = []byte("packages")
 var cfgFile string
 
 var rootYes bool
+var rootToken string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -42,10 +43,7 @@ func init() {
 	// will be global for your application.
 
 	rootCmd.PersistentFlags().BoolVarP(&rootYes, "yes", "y", false, "Confirm all")
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	// rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.PersistentFlags().StringVar(&rootToken, "token", "", "GitHub API token")
 
 	var err error
 	homedir, err := os.UserHomeDir()

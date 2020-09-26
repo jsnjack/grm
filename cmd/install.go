@@ -188,7 +188,7 @@ func filterList(list []string, filter string, strict bool) []string {
 }
 
 func selectRelease(pkg *Package) (*github.RepositoryRelease, error) {
-	client := CreateClient("")
+	client := CreateClient()
 	if pkg.Version == "" {
 		// Get latest release
 		release, _, err := client.Repositories.GetLatestRelease(context.Background(), pkg.Owner, pkg.Repo)
