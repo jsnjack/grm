@@ -2,14 +2,14 @@ grm
 ====
 
 ### What is it?
-`grm` is an experimental package manager for GitHub Releases. It is probably only good in installing packages which are distributed as binaries (for example the ones written in Go, Rust). The following popular packages can be installed with `grm`:
+`grm` is an experimental package manager for GitHub Releases. It is probably only good for installing packages which are distributed as binaries (for example the ones written in Go, Rust). The following popular packages can be installed with `grm`:
  - mozilla/geckodriver
  - gohugoio/hugo
  - go-acme/lego
  - zyedidia/micro
  - ...
 
-`grm` inspects release assets for a binary file and when the file is found, downloads and installs it in `/usr/local/bin/` directory.
+`grm` inspects release assets for a binary file and when the file is found, downloads and installs it to `/usr/local/bin/` directory.
 
 ### How to use it?
 ```bash
