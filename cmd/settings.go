@@ -6,9 +6,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// getCmd represents the get command
-var getCmd = &cobra.Command{
-	Use:   "get",
+// settingsCmd represents the get command
+var settingsCmd = &cobra.Command{
+	Use:   "settings",
 	Short: "Print settings",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
@@ -20,5 +20,5 @@ var getCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(getCmd)
+	rootCmd.AddCommand(settingsCmd)
 }
