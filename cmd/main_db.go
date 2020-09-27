@@ -8,7 +8,7 @@ import (
 	bolt "go.etcd.io/bbolt"
 )
 
-func saveToDB(pkg *Package, filter []string, filename string, version string) error {
+func savePackageToDB(pkg *Package, filter []string, filename string, version string) error {
 	err := DB.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(PackagesBucket)
 
@@ -92,4 +92,31 @@ func setPackageLock(status bool, name string) error {
 		return fmt.Errorf("Package %s is not installed", name)
 	})
 	return err
+}
+
+func saveSettingsToDB(key string, value string) error {
+	err := DB.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(SettingsBucket)
+
+		err := bucket.Put([]byte(key), []byte(value))
+		return err
+	})
+	return err
+}
+
+func loadSettingsFromDB(key string) string {
+	var value string
+	err := DB.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(SettingsBucket)
+
+		res := bucket.Get([]byte(key))
+		if res != nil {
+			value = string(res)
+		}
+		return nil
+	})
+	if err != nil {
+		return ""
+	}
+	return value
 }

@@ -16,6 +16,9 @@ var DB *bolt.DB
 // PackagesBucket a bucket with all info about installed packages
 var PackagesBucket = []byte("packages")
 
+// SettingsBucket a bucket with settings
+var SettingsBucket = []byte("settings")
+
 var cfgFile string
 
 var rootYes bool
@@ -64,6 +67,10 @@ func init() {
 	// Bootstrap DB
 	err = DB.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists(PackagesBucket)
+		if err != nil {
+			return err
+		}
+		_, err = tx.CreateBucketIfNotExists(SettingsBucket)
 		return err
 	})
 

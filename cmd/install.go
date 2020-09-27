@@ -219,7 +219,7 @@ func installRelease(release *github.RepositoryRelease, pkg *Package) error {
 	if err != nil {
 		return err
 	}
-	err = saveToDB(pkg, pkg.Filter, installedFile, release.GetTagName())
+	err = savePackageToDB(pkg, pkg.Filter, installedFile, release.GetTagName())
 	if err != nil {
 		return err
 	}

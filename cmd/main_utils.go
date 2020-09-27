@@ -185,12 +185,18 @@ func (pr *ProgressReader) Read(p []byte) (int, error) {
 // CreateClient creates github client instance. It will try to use GITHUB_TOKEN
 // environment variable to create authenticated client (no rate limits)
 func CreateClient() *github.Client {
-	// Retrieve GitHub API token
+	// First check if the token was provided as a flag
 	token := rootToken
 	if token == "" {
+		// See if it is set in configuration
+		token = loadSettingsFromDB("token")
+	}
+	if token == "" {
+		// Try to get it from environments
 		token = os.Getenv("GITHUB_TOKEN")
 	}
 	if token == "" {
+		// Give up, use anonymous session
 		return github.NewClient(nil)
 	}
 
