@@ -66,7 +66,7 @@ var installCmd = &cobra.Command{
 				// Check if package of selected release has already been installed
 				for _, installedItem := range installedPkgs {
 					if installedItem.GetFullName() == pkg.GetFullName() {
-						if installedItem.Version == release.GetTagName() {
+						if installedItem.VerifyVersion(release.GetTagName()) == nil {
 							fmt.Printf("Package %s already at %s\n", installedItem.GetFullName(), installedItem.Version)
 							continue argsLoop
 						}

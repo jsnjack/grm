@@ -32,6 +32,14 @@ func savePackageToDB(pkg *Package, filter []string, filename string, version str
 		if err != nil {
 			return err
 		}
+		hash, err := tomd5(filename)
+		if err != nil {
+			return err
+		}
+		err = pb.Put([]byte("md5"), []byte(hash))
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 	return err
@@ -63,7 +71,9 @@ func createPackageFromDB(name string, b *bolt.Bucket) (*Package, error) {
 		return nil, err
 	}
 	p.Version = string(b.Get([]byte("version")))
-	p.Filename = string(b.Get([]byte("flename")))
+	p.Filename = string(b.Get([]byte("filename")))
+	p.MD5 = string(b.Get([]byte("md5")))
+
 	locked := b.Get([]byte("locked"))
 	if locked != nil {
 		p.Locked = string(locked)

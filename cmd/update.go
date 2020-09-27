@@ -49,10 +49,11 @@ var updateCmd = &cobra.Command{
 				fmt.Println(err)
 				continue
 			}
-			if release.GetTagName() == p.Version {
+			err = p.VerifyVersion(release.GetTagName())
+			if err == nil {
 				fmt.Println("  latest")
 			} else {
-				fmt.Printf("  new version %s\n", release.GetTagName())
+				fmt.Println(" ", err)
 				if ok := askForConfirmation("Confirm to update:"); !ok {
 					continue
 				}

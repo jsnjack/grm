@@ -10,6 +10,7 @@ type Package struct {
 	Repo     string
 	Owner    string
 	Version  string
+	MD5      string
 	Filter   []string
 	Locked   string
 	Filename string
@@ -34,6 +35,18 @@ func (p *Package) IsLocked() bool {
 		return true
 	}
 	return false
+}
+
+// VerifyVersion verifies that correct package version is installed
+func (p *Package) VerifyVersion(version string) error {
+	if version != p.Version {
+		return fmt.Errorf("installed version %s, want %s", p.Version, version)
+	}
+	hash, _ := tomd5(p.Filename)
+	if p.MD5 != hash {
+		return fmt.Errorf("installed file hash %s, want %s", p.MD5, hash)
+	}
+	return nil
 }
 
 // CreatePackage creates new Package instance from a string

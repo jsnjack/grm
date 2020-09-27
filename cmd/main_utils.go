@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"crypto/md5"
 	"fmt"
 	"io"
 	"log"
@@ -207,4 +208,18 @@ func CreateClient() *github.Client {
 	tc := oauth2.NewClient(ctx, ts)
 
 	return github.NewClient(tc)
+}
+
+func tomd5(filePath string) (string, error) {
+	var md5Value string
+	file, err := os.Open(filePath)
+	if err != nil {
+		return md5Value, err
+	}
+	defer file.Close()
+	h := md5.New()
+	if _, err := io.Copy(h, file); err != nil {
+		return md5Value, err
+	}
+	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
