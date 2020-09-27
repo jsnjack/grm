@@ -53,7 +53,7 @@ var updateCmd = &cobra.Command{
 			} else {
 				fmt.Printf("  new version %s\n", release.GetTagName())
 				if ok := askForConfirmation("Confirm to update:"); !ok {
-					return nil
+					continue
 				}
 
 				// p.Version doesn't matter
