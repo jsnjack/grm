@@ -130,9 +130,11 @@ func selectAsset(assets []*github.ReleaseAsset, filter []string) (*github.Releas
 		// Extra filters
 		if runtime.GOARCH == "amd64" {
 			filtered = filterList(filtered, "64", false)
+			filtered = filterList(filtered, runtime.GOOS+"64", false)
 		}
 		if runtime.GOARCH == "386" {
 			filtered = filterList(filtered, "32", false)
+			filtered = filterList(filtered, runtime.GOOS+"32", false)
 		}
 	}
 
