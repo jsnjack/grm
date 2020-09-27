@@ -46,7 +46,8 @@ var updateCmd = &cobra.Command{
 			}
 			release, err := selectRelease(&Package{Owner: p.Owner, Repo: p.Repo})
 			if err != nil {
-				return err
+				fmt.Println(err)
+				continue
 			}
 			if release.GetTagName() == p.Version {
 				fmt.Println("  latest")
