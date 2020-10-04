@@ -22,7 +22,12 @@ func installArchive(filename string) (string, error) {
 		}
 		fmt.Printf("  %-40s %s\n", f.Path, ct)
 		if filenameA == "" && ct == "application/octet-stream" {
-			filenameA = f.Path
+			// Strange special case fo zip files (chromedriver)
+			if f.Path == "" {
+				filenameA = f.Name()
+			} else {
+				filenameA = f.Path
+			}
 		}
 		return nil
 	})
