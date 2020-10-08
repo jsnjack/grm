@@ -17,7 +17,7 @@ var releaseTag string
 
 // releaseCmd represents the release command
 var releaseCmd = &cobra.Command{
-	Use:   "release <package>",
+	Use:   "release <package> -f <filename> [-f <filename>] -t v<version>",
 	Short: "Create a release in GitHub",
 	Args: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceErrors = true
