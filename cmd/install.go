@@ -137,6 +137,7 @@ func selectAsset(assets []*github.ReleaseAsset, filter []string) (*github.Releas
 			filtered = filterList(filtered, runtime.GOOS+"32", false)
 		}
 		if runtime.GOOS == "darwin" {
+			filtered = filterList(filtered, "mac", false)
 			filtered = filterList(filtered, "macos", false)
 		}
 	}
