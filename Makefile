@@ -13,10 +13,10 @@ bin/grm: bin/grm_linux_amd64
 	cp bin/grm_linux_amd64 bin/grm
 
 bin/grm_linux_amd64: version main.go cmd/*.go
-	GOOS=linux GOARCH=amd64 go build -ldflags="-X github.com/jsnjack/grm/cmd.Version=${VERSION}" -o bin/grm_linux_amd64
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-X github.com/jsnjack/grm/cmd.Version=${VERSION}" -o bin/grm_linux_amd64
 
 bin/grm_darwin_amd64: version main.go cmd/*.go
-	GOOS=darwin GOARCH=amd64 go build -ldflags="-X github.com/jsnjack/grm/cmd.Version=${VERSION}" -o bin/grm_darwin_amd64
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-X github.com/jsnjack/grm/cmd.Version=${VERSION}" -o bin/grm_darwin_amd64
 
 build: bin/grm bin/grm_linux_amd64 bin/grm_darwin_amd64
 
