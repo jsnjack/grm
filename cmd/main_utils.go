@@ -223,3 +223,15 @@ func tomd5(filePath string) (string, error) {
 	}
 	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
+
+func logf(format string, a ...interface{}) {
+	if rootVerbose {
+		fmt.Printf(format, a...)
+	}
+}
+
+func logln(a ...interface{}) {
+	if rootVerbose {
+		fmt.Println(a...)
+	}
+}

@@ -23,6 +23,7 @@ var cfgFile string
 
 var rootYes bool
 var rootToken string
+var rootVerbose bool
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -46,6 +47,7 @@ func init() {
 	// will be global for your application.
 
 	rootCmd.PersistentFlags().BoolVarP(&rootYes, "yes", "y", false, "Confirm all")
+	rootCmd.PersistentFlags().BoolVarP(&rootVerbose, "verbose", "v", false, "Enable verbose logging")
 	rootCmd.PersistentFlags().StringVar(&rootToken, "token", "", "GitHub API token")
 
 	var err error
