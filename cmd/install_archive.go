@@ -2,46 +2,51 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/jsnjack/archiver/v3"
 )
 
 func installArchive(filename string) (string, error) {
-	// Walk the archive to find binary
+	fmt.Println("Unpacking archive...", filename)
+	tmpDir := filepath.Dir(filename)
+	err := archiver.Unarchive(filename, tmpDir)
+	if err != nil {
+		return "", err
+	}
+
 	fmt.Println("Looking for a binary file...")
 	filenameA := ""
-	err := archiver.Walk(filename, func(f archiver.File) error {
-		if f.IsDir() {
-			fmt.Printf("  %-40s %s\n", f.Path, "dir")
-			return nil
-		}
-		ct, err := getFileContentType(f)
+	err = filepath.Walk(tmpDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("  %-40s %s\n", f.Path, ct)
-		if filenameA == "" && ct == "application/octet-stream" {
-			// Strange special case fo zip files (chromedriver)
-			if f.Path == "" {
-				filenameA = f.Name()
-			} else {
-				filenameA = f.Path
+
+		// check if it is a regular file (not dir)
+		if info.Mode().IsRegular() {
+			f, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+			ct, err := getFileContentType(f)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("  %-40s %s\n", path, ct)
+			if filenameA == "" && ct == "application/octet-stream" {
+				filenameA = path
 			}
 		}
 		return nil
 	})
-	if filenameA == "" {
-		return "", fmt.Errorf("Unable to find a binary file in archive")
-	}
-	fmt.Printf("Extracting file %s...\n", filenameA)
 
-	tmpDir := filepath.Dir(filename)
-	err = archiver.Extract(filename, filenameA, tmpDir)
 	if err != nil {
 		return "", err
 	}
-	fmt.Println("done")
 
-	return installBinary(tmpDir + "/" + filenameA)
+	if filenameA == "" {
+		return "", fmt.Errorf("Unable to find a binary file in archive")
+	}
+	return installBinary(filenameA)
 }

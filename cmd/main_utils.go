@@ -61,7 +61,7 @@ func downloadFile(asset *github.ReleaseAsset, pkg *Package) (string, error) {
 }
 
 func installBinary(filename string) (string, error) {
-	fmt.Printf("Installing in %s...\n", DefaultBinDir)
+	fmt.Printf("Installing %s in %s...\n", filename, DefaultBinDir)
 	installedFile := fmt.Sprintf("%s%s", DefaultBinDir, filepath.Base(filename))
 	err := removeBinary(installedFile)
 	if err != nil {
