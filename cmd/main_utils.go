@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/go-github/v32/github"
@@ -22,6 +23,10 @@ import (
 // DefaultBinDir is the default location for binary files
 const DefaultBinDir = "/usr/local/bin/"
 
+// DefaultTmpDirPattern is the pattern that is used to generate tmp directory
+// for packages during the installation
+const DefaultTmpDirPattern = "/tmp/grm."
+
 func downloadFile(asset *github.ReleaseAsset, pkg *Package) (string, error) {
 	client := CreateClient()
 	reader, _, err := client.Repositories.DownloadReleaseAsset(context.Background(), pkg.Owner, pkg.Repo, asset.GetID(), http.DefaultClient)
@@ -31,7 +36,7 @@ func downloadFile(asset *github.ReleaseAsset, pkg *Package) (string, error) {
 	defer reader.Close()
 
 	// Create a directory
-	path := fmt.Sprintf("/tmp/grm.%s/", generateRandomString(6))
+	path := fmt.Sprintf(DefaultTmpDirPattern+"%s/", generateRandomString(6))
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		err = os.Mkdir(path, os.ModePerm)
 		if err != nil {
@@ -61,7 +66,10 @@ func downloadFile(asset *github.ReleaseAsset, pkg *Package) (string, error) {
 }
 
 func installBinary(filename string) (string, error) {
-	fmt.Printf("Installing %s in %s...\n", filename, DefaultBinDir)
+	tmpDir := getTmpDir(filename)
+
+	fmt.Printf("Installing %s in %s...\n", strings.TrimPrefix(filename, tmpDir), DefaultBinDir)
+
 	installedFile := fmt.Sprintf("%s%s", DefaultBinDir, filepath.Base(filename))
 	err := removeBinary(installedFile)
 	if err != nil {
@@ -74,6 +82,15 @@ func installBinary(filename string) (string, error) {
 	}
 	cmd := exec.Command("/bin/sh", "-c", "sudo chmod +x "+installedFile)
 	err = cmd.Run()
+
+	if strings.HasPrefix(tmpDir, DefaultTmpDirPattern) {
+		logf("Removing %s...\n", tmpDir)
+		cmdRm := exec.Command("/bin/sh", "-c", fmt.Sprintf("rm -rf %s", tmpDir))
+		err := cmdRm.Run()
+		if err != nil {
+			logln(err)
+		}
+	}
 	return installedFile, err
 }
 
@@ -81,6 +98,14 @@ func removeBinary(filename string) error {
 	cmdRm := exec.Command("/bin/sh", "-c", fmt.Sprintf("sudo rm -f %s", filename))
 	err := cmdRm.Run()
 	return err
+}
+
+func getTmpDir(path string) string {
+	if strings.HasPrefix(path, DefaultTmpDirPattern) {
+		split := strings.Split(path, "/")
+		return "/" + split[1] + "/" + split[2] + "/"
+	}
+	return ""
 }
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"

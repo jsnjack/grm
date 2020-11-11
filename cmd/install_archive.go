@@ -4,17 +4,19 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/jsnjack/archiver/v3"
 )
 
 func installArchive(filename string) (string, error) {
-	fmt.Println("Unpacking archive...", filename)
-	tmpDir := filepath.Dir(filename)
+	tmpDir := getTmpDir(filename)
+	fmt.Println("Unpacking archive...", strings.TrimPrefix(filename, tmpDir))
 	err := archiver.Unarchive(filename, tmpDir)
 	if err != nil {
 		return "", err
 	}
+	logf("Unpacked to %s\n", tmpDir)
 
 	fmt.Println("Looking for a binary file...")
 	filenameA := ""
@@ -33,7 +35,7 @@ func installArchive(filename string) (string, error) {
 			if err != nil {
 				return err
 			}
-			fmt.Printf("  %-40s %s\n", path, ct)
+			fmt.Printf("  %-40s %s\n", strings.TrimPrefix(path, tmpDir), ct)
 			if filenameA == "" && ct == "application/octet-stream" {
 				filenameA = path
 			}
