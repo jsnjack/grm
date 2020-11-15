@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jsnjack/archiver/v3"
+	"github.com/mholt/archiver/v3"
 )
 
 func installArchive(filename string) (string, error) {
