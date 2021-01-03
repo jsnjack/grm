@@ -118,30 +118,7 @@ func selectAsset(assets []*github.ReleaseAsset, filter []string) (*github.Releas
 		assetNames = append(assetNames, item.GetName())
 	}
 
-	filtered := assetNames
-	if len(filter) != 0 {
-		for _, item := range filter {
-			filtered = filterList(filtered, item, false)
-		}
-	} else {
-		// Filter by operating system
-		filtered = filterList(filtered, runtime.GOOS, false)
-		// Filter by architecture
-		filtered = filterList(filtered, runtime.GOARCH, false)
-		// Extra filters
-		if runtime.GOARCH == "amd64" {
-			filtered = filterList(filtered, "64", false)
-			filtered = filterList(filtered, runtime.GOOS+"64", false)
-		}
-		if runtime.GOARCH == "386" {
-			filtered = filterList(filtered, "32", false)
-			filtered = filterList(filtered, runtime.GOOS+"32", false)
-		}
-		if runtime.GOOS == "darwin" {
-			filtered = filterList(filtered, "mac", false)
-			filtered = filterList(filtered, "macos", false)
-		}
-	}
+	filtered := filterSuitableAssets(assetNames, filter)
 
 	// Print suitable assets
 	fmt.Printf("Found %d suitable assets\n", len(filtered))
@@ -169,6 +146,33 @@ func selectAsset(assets []*github.ReleaseAsset, filter []string) (*github.Releas
 	}
 
 	return nil, fmt.Errorf("Unexpected error when selecting the asset")
+}
+
+func filterSuitableAssets(input []string, filters []string) []string {
+	filtered := input
+	if len(filters) != 0 {
+		for _, item := range filters {
+			filtered = filterList(filtered, item, false)
+		}
+	}
+	// Filter by operating system
+	filtered = filterList(filtered, runtime.GOOS, false)
+	// Filter by architecture
+	filtered = filterList(filtered, runtime.GOARCH, false)
+	// Extra filters
+	if runtime.GOARCH == "amd64" {
+		filtered = filterList(filtered, "64", false)
+		filtered = filterList(filtered, runtime.GOOS+"64", false)
+	}
+	if runtime.GOARCH == "386" {
+		filtered = filterList(filtered, "32", false)
+		filtered = filterList(filtered, runtime.GOOS+"32", false)
+	}
+	if runtime.GOOS == "darwin" {
+		filtered = filterList(filtered, "mac", false)
+		filtered = filterList(filtered, "macos", false)
+	}
+	return filtered
 }
 
 // filterList filters list by `filter`. If `strict` is false returns original
