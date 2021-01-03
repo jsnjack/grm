@@ -8,6 +8,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Settings contains map of all available settings setting/description
+var Settings = map[string]string{
+	"token": "GitHub API token",
+}
+
 // GrmConfig represents grm configuration
 type GrmConfig struct {
 	Packages map[string]Package `yaml:"packages"`
@@ -37,6 +42,10 @@ func (g *GrmConfig) PutPackage(pkg *Package) error {
 
 // PutSetting saves a setting in config
 func (g *GrmConfig) PutSetting(key string, value string) error {
+	_, ok := Settings[key]
+	if !ok {
+		return fmt.Errorf("Unknown key: %s", key)
+	}
 	g.Settings[key] = value
 	return g.save()
 }

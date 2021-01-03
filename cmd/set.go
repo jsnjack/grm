@@ -6,11 +6,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Settings contains map of all available settings setting/description
-var Settings = map[string]string{
-	"token": "GitHub API token",
-}
-
 // setTokenCmd represents the setToken command
 var setTokenCmd = &cobra.Command{
 	Use:   "set <key> <value>",
