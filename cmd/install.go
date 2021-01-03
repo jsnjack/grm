@@ -79,7 +79,9 @@ var installCmd = &cobra.Command{
 				return err
 			}
 
-			pkg.Locked = true
+			if installLock {
+				pkg.Locked = true
+			}
 			config.PutPackage(pkg)
 		}
 		return nil
