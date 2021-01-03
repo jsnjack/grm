@@ -18,6 +18,7 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List installed packages",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceErrors = true
 		config, err := ReadConfig(ConfigFile)
 		if err != nil {
 			return err
@@ -53,6 +54,9 @@ var listCmd = &cobra.Command{
 					)
 				}
 			}
+		} else {
+			cmd.SilenceUsage = true
+			return fmt.Errorf("No installed packages")
 		}
 		return nil
 	},
