@@ -33,12 +33,17 @@ var unlockCmd = &cobra.Command{
 			pkg, ok := config.Packages[item]
 			if ok {
 				pkg.Locked = false
+				err = config.PutPackage(&pkg)
+				if err != nil {
+					return err
+				}
+
 			} else {
 				fmt.Printf("Package %s is not installed\n", item)
 				continue
 			}
 		}
-		return config.save()
+		return nil
 	},
 }
 
