@@ -25,10 +25,4 @@ release: build
 	tar --transform='s,_.*,,' --transform='s,bin/,,' -cz -f bin/grm_darwin_amd64.tar.gz bin/grm_darwin_amd64
 	grm release jsnjack/grm -f bin/grm -f bin/grm_linux_amd64.tar.gz -f bin/grm_darwin_amd64.tar.gz -t "v`monova`"
 
-.ONESHELL:
-viewdb:
-	rm -f view.db
-	cp /home/${USER}/.config/grm/grm.db view.db
-	bolter -f view.db
-
-.PHONY: version viewdb release build
+.PHONY: version release build
