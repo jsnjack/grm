@@ -33,7 +33,7 @@ var installCmd = &cobra.Command{
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
-		installedPkgs, err := loadAllInstalledFromDB()
+		config, err := ReadConfig(ConfigFile)
 		if err != nil {
 			return err
 		}
@@ -46,9 +46,9 @@ var installCmd = &cobra.Command{
 			pkg.Filter = installFilter
 
 			// Check that package is not locked
-			for _, installedItem := range installedPkgs {
+			for _, installedItem := range config.Packages {
 				if installedItem.GetFullName() == pkg.GetFullName() {
-					if installedItem.IsLocked() {
+					if installedItem.Locked {
 						fmt.Printf("Package %s is locked\n", pkg.GetFullName())
 						continue argsLoop
 					}
@@ -64,7 +64,7 @@ var installCmd = &cobra.Command{
 
 			if !installRefresh {
 				// Check if package of selected release has already been installed
-				for _, installedItem := range installedPkgs {
+				for _, installedItem := range config.Packages {
 					if installedItem.GetFullName() == pkg.GetFullName() {
 						if installedItem.VerifyVersion(release.GetTagName()) == nil {
 							fmt.Printf("Package %s already at %s\n", installedItem.GetFullName(), installedItem.Version)
@@ -79,9 +79,8 @@ var installCmd = &cobra.Command{
 				return err
 			}
 
-			if installLock {
-				setPackageLock(true, pkg.GetFullName())
-			}
+			pkg.Locked = true
+			config.PutPackage(pkg)
 		}
 		return nil
 	},
@@ -225,7 +224,15 @@ func installRelease(release *github.RepositoryRelease, pkg *Package) error {
 	if err != nil {
 		return err
 	}
-	err = savePackageToDB(pkg, pkg.Filter, installedFile, release.GetTagName())
+
+	// Write changes to config file
+	pkg.Filename = installedFile
+	pkg.Version = release.GetTagName()
+	config, err := ReadConfig(ConfigFile)
+	if err != nil {
+		return err
+	}
+	err = config.PutPackage(pkg)
 	if err != nil {
 		return err
 	}

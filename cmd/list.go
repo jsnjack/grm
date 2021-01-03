@@ -18,16 +18,16 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List installed packages",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		pkgs, err := loadAllInstalledFromDB()
+		config, err := ReadConfig(ConfigFile)
 		if err != nil {
 			return err
 		}
-		if len(pkgs) > 0 {
+		if len(config.Packages) > 0 {
 			if listRepoDescription {
 				// Print list of all packages and fetch their description from github
 				fmt.Printf(listRepoDescriptionPattern, "Package", "Description")
 				client := CreateClient()
-				for _, p := range pkgs {
+				for _, p := range config.Packages {
 					var description string
 					repo, _, err := client.Repositories.Get(context.Background(), p.Owner, p.Repo)
 					if err != nil {
@@ -43,7 +43,7 @@ var listCmd = &cobra.Command{
 				}
 			} else {
 				fmt.Printf(listPattern, "Package", "Version", "Locked", "Filter")
-				for _, p := range pkgs {
+				for _, p := range config.Packages {
 					fmt.Printf(
 						listPattern,
 						p.GetFullName(),

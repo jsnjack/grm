@@ -12,7 +12,7 @@ type Package struct {
 	Version  string
 	MD5      string
 	Filter   []string
-	Locked   string
+	Locked   bool
 	Filename string
 }
 
@@ -23,18 +23,10 @@ func (p *Package) GetFullName() string {
 
 // GetVerboseLocked returns print-friendly value
 func (p *Package) GetVerboseLocked() string {
-	if p.Locked == "false" {
-		return ""
+	if p.Locked {
+		return "yes"
 	}
-	return p.Locked
-}
-
-// IsLocked returns if package version is locked
-func (p *Package) IsLocked() bool {
-	if p.Locked == "true" {
-		return true
-	}
-	return false
+	return ""
 }
 
 // VerifyVersion verifies that correct package version is installed

@@ -26,12 +26,19 @@ var lockCmd = &cobra.Command{
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
+		config, err := ReadConfig(ConfigFile)
+		if err != nil {
+			return err
+		}
 		for _, item := range args {
-			err := setPackageLock(true, item)
-			if err != nil {
-				return err
+			pkg, ok := config.Packages[item]
+			if ok {
+				pkg.Locked = true
+			} else {
+				fmt.Printf("Packages %s is not installed\n", item)
 			}
 		}
+		config.save()
 		return nil
 	},
 }

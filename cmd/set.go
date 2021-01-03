@@ -30,7 +30,11 @@ var setTokenCmd = &cobra.Command{
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
-		err := saveSettingsToDB(args[0], args[1])
+		config, err := ReadConfig(ConfigFile)
+		if err != nil {
+			return err
+		}
+		err = config.PutSetting(args[0], args[1])
 		if err == nil {
 			fmt.Println("ok")
 		}

@@ -29,18 +29,18 @@ var updateCmd = &cobra.Command{
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		pkgs, err := loadAllInstalledFromDB()
+		config, err := ReadConfig(ConfigFile)
 		if err != nil {
 			return err
 		}
-		for _, p := range pkgs {
+		for _, p := range config.Packages {
 			if len(args) == 1 {
 				if args[0] != p.Owner+"/"+p.Repo {
 					continue
 				}
 			}
 			fmt.Printf("Checking %s/%s...\n", p.Owner, p.Repo)
-			if p.IsLocked() {
+			if p.Locked {
 				fmt.Println("  locked")
 				continue
 			}
@@ -59,7 +59,7 @@ var updateCmd = &cobra.Command{
 				}
 
 				// p.Version doesn't matter
-				err = installRelease(release, p)
+				err = installRelease(release, &p)
 				if err != nil {
 					fmt.Println(err)
 				}

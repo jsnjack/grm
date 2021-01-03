@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	bolt "go.etcd.io/bbolt"
 )
 
 // removeCmd represents the remove command
@@ -26,32 +25,17 @@ var removeCmd = &cobra.Command{
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
+		config, err := ReadConfig(ConfigFile)
+		if err != nil {
+			return err
+		}
 		for _, item := range args {
-			var pkg *Package
-			// Retrieve binary location
-			err := DB.View(func(tx *bolt.Tx) error {
-				b := tx.Bucket([]byte(PackagesBucket))
-				c := b.Cursor()
-				for key, _ := c.First(); key != nil; key, _ = c.Next() {
-					if string(key) == item {
-						pb := b.Bucket(key)
-						if pb == nil {
-							return fmt.Errorf("Bucket %s doesn't exist", item)
-						}
-						p, err := createPackageFromDB(item, pb)
-						if err != nil {
-							return err
-						}
-						pkg = p
-						return nil
-					}
-				}
-				return fmt.Errorf("Package %s is not installed", item)
-			})
-			if err != nil {
-				return err
+			pkg, ok := config.Packages[item]
+			if !ok {
+				fmt.Printf("Package %s is not installed\n", item)
+				continue
 			}
-			if pkg.IsLocked() {
+			if pkg.Locked {
 				fmt.Printf("Package %s is locked\n", pkg.GetFullName())
 				continue
 			}
@@ -64,12 +48,9 @@ var removeCmd = &cobra.Command{
 				return err
 			}
 			// Clean db
-			err = DB.Update(func(tx *bolt.Tx) error {
-				bucket := tx.Bucket(PackagesBucket)
-				return bucket.DeleteBucket([]byte(item))
-			})
-			return err
+			delete(config.Packages, item)
 		}
+		config.save()
 		return nil
 	},
 }

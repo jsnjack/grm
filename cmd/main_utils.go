@@ -215,7 +215,10 @@ func CreateClient() *github.Client {
 	token := rootToken
 	if token == "" {
 		// See if it is set in configuration
-		token = loadSettingsFromDB("token")
+		config, err := ReadConfig(ConfigFile)
+		if err != nil {
+			token = config.Settings["token"]
+		}
 	}
 	if token == "" {
 		// Try to get it from environments

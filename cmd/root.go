@@ -6,20 +6,10 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-
-	bolt "go.etcd.io/bbolt"
 )
 
-// DB is the Bolt db
-var DB *bolt.DB
-
-// PackagesBucket a bucket with all info about installed packages
-var PackagesBucket = []byte("packages")
-
-// SettingsBucket a bucket with settings
-var SettingsBucket = []byte("settings")
-
-var cfgFile string
+// ConfigFile is a file with configuration
+var ConfigFile string
 
 var rootYes bool
 var rootToken string
@@ -34,7 +24,6 @@ var rootCmd = &cobra.Command{
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	defer DB.Close()
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -61,22 +50,5 @@ func init() {
 		log.Fatal(err)
 	}
 
-	DB, err = bolt.Open(workdir+"grm.db", 0644, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Bootstrap DB
-	err = DB.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists(PackagesBucket)
-		if err != nil {
-			return err
-		}
-		_, err = tx.CreateBucketIfNotExists(SettingsBucket)
-		return err
-	})
-
-	if err != nil {
-		log.Fatal(err)
-	}
+	ConfigFile = workdir + "grm.yaml"
 }

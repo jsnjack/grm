@@ -12,8 +12,12 @@ var settingsCmd = &cobra.Command{
 	Short: "Print settings",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
+		config, err := ReadConfig(ConfigFile)
+		if err != nil {
+			return err
+		}
 		for key := range Settings {
-			fmt.Printf("%s: %s\n", key, loadSettingsFromDB(key))
+			fmt.Printf("%s: %s\n", key, config.Settings[key])
 		}
 		return nil
 	},
