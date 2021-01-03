@@ -12,6 +12,7 @@ const listPattern = "%-40s %-20s %-20s %s\n"
 const listRepoDescriptionPattern = "%-40s %s\n"
 
 var listRepoDescription bool
+var listFlat bool
 
 // listCmd represents the list command
 var listCmd = &cobra.Command{
@@ -42,6 +43,13 @@ var listCmd = &cobra.Command{
 						description,
 					)
 				}
+				return nil
+			} else if listFlat {
+				for _, p := range config.Packages {
+					fmt.Printf("%s ", p.GetFullName())
+				}
+				fmt.Println()
+				return nil
 			} else {
 				fmt.Printf(listPattern, "Package", "Version", "Locked", "Filter")
 				for _, p := range config.Packages {
@@ -53,16 +61,17 @@ var listCmd = &cobra.Command{
 						fmt.Sprintf(strings.Join(p.Filter, ", ")),
 					)
 				}
+				return nil
 			}
 		} else {
 			cmd.SilenceUsage = true
 			return fmt.Errorf("No installed packages")
 		}
-		return nil
 	},
 }
 
 func init() {
-	listCmd.Flags().BoolVarP(&listRepoDescription, "description", "d", false, "Print repository description")
+	listCmd.Flags().BoolVarP(&listRepoDescription, "description", "d", false, "Print description of the repositories")
+	listCmd.Flags().BoolVarP(&listFlat, "flat", "f", false, "Print installed packages in flat form")
 	rootCmd.AddCommand(listCmd)
 }
