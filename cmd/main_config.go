@@ -44,6 +44,7 @@ func (g *GrmConfig) PutSetting(key string, value string) error {
 // ReadConfig reads config file
 func ReadConfig(path string) (*GrmConfig, error) {
 	config := GrmConfig{}
+	config.path = path
 
 	// Verify that config file exists
 	if _, err := os.Stat(path); err == nil {
@@ -58,7 +59,10 @@ func ReadConfig(path string) (*GrmConfig, error) {
 	} else {
 		// Config is empty
 		fmt.Printf("Initializing config in %s...\n", path)
+		err = config.save()
+		if err != nil {
+			return nil, err
+		}
 	}
-	config.path = path
 	return &config, nil
 }
