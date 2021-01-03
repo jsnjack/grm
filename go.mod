@@ -10,5 +10,5 @@ require (
 	github.com/schollz/progressbar/v2 v2.15.0
 	github.com/spf13/cobra v1.1.1
 	go.etcd.io/bbolt v1.3.5
-	golang.org/x/oauth2 v0.0.0-20201109201403-9fd604954f58
+	golang.org/x/oauth2 v0.0.0-20201208152858-08078c50e5b5
 )
