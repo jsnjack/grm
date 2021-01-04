@@ -21,6 +21,7 @@ type GrmConfig struct {
 }
 
 func (g *GrmConfig) save() error {
+	logf("Saving config to %s...\n", g.path)
 	data, err := yaml.Marshal(g)
 	if err != nil {
 		return err
@@ -52,6 +53,7 @@ func (g *GrmConfig) PutSetting(key string, value string) error {
 
 // ReadConfig reads config file
 func ReadConfig(path string) (*GrmConfig, error) {
+	logf("Loading config from %s...\n", path)
 	config := GrmConfig{}
 	config.path = path
 
