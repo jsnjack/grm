@@ -70,6 +70,8 @@ func ReadConfig(path string) (*GrmConfig, error) {
 	} else {
 		// Config is empty
 		fmt.Printf("Initializing config in %s...\n", path)
+		config.Settings = make(map[string]string)
+		config.Packages = make(map[string]Package)
 		err = config.save()
 		if err != nil {
 			return nil, err
