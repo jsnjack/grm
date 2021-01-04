@@ -213,21 +213,32 @@ func (pr *ProgressReader) Read(p []byte) (int, error) {
 func CreateClient() *github.Client {
 	// First check if the token was provided as a flag
 	token := rootToken
+	if token != "" {
+		logf("Token from flag: %s\n", token)
+	}
 	if token == "" {
 		// See if it is set in configuration
 		config, err := ReadConfig(ConfigFile)
-		if err != nil {
+		if err == nil {
 			token = config.Settings["token"]
+			if token != "" {
+				logf("Token from config: %s\n", token)
+			}
 		}
 	}
 	if token == "" {
 		// Try to get it from environments
 		token = os.Getenv("GITHUB_TOKEN")
+		if token != "" {
+			logf("Token from env: %s\n", token)
+		}
 	}
 	if token == "" {
 		// Give up, use anonymous session
+		logln("Using anonymous client")
 		return github.NewClient(nil)
 	}
+	logf("Using client with token: %s\n", token)
 
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(
