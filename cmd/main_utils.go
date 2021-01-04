@@ -219,11 +219,13 @@ func CreateClient() *github.Client {
 	if token == "" {
 		// See if it is set in configuration
 		config, err := ReadConfig(ConfigFile)
-		if err == nil {
-			token = config.Settings["token"]
-			if token != "" {
-				logf("Token from config: %s\n", token)
-			}
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		token = config.Settings["token"]
+		if token != "" {
+			logf("Token from config: %s\n", token)
 		}
 	}
 	if token == "" {
