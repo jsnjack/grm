@@ -65,7 +65,8 @@ var listCmd = &cobra.Command{
 			}
 		} else {
 			cmd.SilenceUsage = true
-			return fmt.Errorf("No installed packages")
+			fmt.Println("No installed packages")
+			return nil
 		}
 	},
 }
