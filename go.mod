@@ -9,7 +9,6 @@ require (
 	github.com/mholt/archiver/v3 v3.5.0
 	github.com/schollz/progressbar/v2 v2.15.0
 	github.com/spf13/cobra v1.1.1
-	go.etcd.io/bbolt v1.3.5
 	golang.org/x/oauth2 v0.0.0-20201208152858-08078c50e5b5
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
 )
