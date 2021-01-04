@@ -66,6 +66,7 @@ func downloadFile(asset *github.ReleaseAsset, pkg *Package) (string, error) {
 }
 
 func installBinary(filename string) (string, error) {
+	logln("Installing as a binary")
 	tmpDir := getTmpDir(filename)
 
 	fmt.Printf("Installing %s in %s...\n", strings.TrimPrefix(filename, tmpDir), DefaultBinDir)

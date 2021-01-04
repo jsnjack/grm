@@ -10,6 +10,7 @@ import (
 )
 
 func installArchive(filename string) (string, error) {
+	logln("Installing from an archive")
 	tmpDir := getTmpDir(filename)
 	fmt.Println("Unpacking archive...", strings.TrimPrefix(filename, tmpDir))
 	err := archiver.Unarchive(filename, tmpDir)
@@ -31,12 +32,12 @@ func installArchive(filename string) (string, error) {
 			if err != nil {
 				return err
 			}
-			ct, err := getFileContentType(f)
+			ct, err := getFileType(f)
 			if err != nil {
-				return err
+				ct = "unknown"
 			}
-			fmt.Printf("  %-40s %s\n", strings.TrimPrefix(path, tmpDir), ct)
-			if filenameA == "" && ct == "application/octet-stream" {
+			fmt.Printf("  %-50s %s\n", strings.TrimPrefix(path, tmpDir), ct)
+			if filenameA == "" && isExecutableFileType(ct) {
 				filenameA = path
 			}
 		}

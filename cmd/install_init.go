@@ -2,9 +2,9 @@ package cmd
 
 import (
 	"io"
-	"net/http"
 	"os"
 
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/google/go-github/v32/github"
 )
 
@@ -21,31 +21,30 @@ func Install(asset *github.ReleaseAsset, pkg *Package) (string, error) {
 		return "", err
 	}
 
-	ct, err := getFileContentType(file)
+	ct, err := getFileType(file)
 	if err != nil {
 		return "", err
 	}
-	logf("Content type %s\n", ct)
+	logf("File type %s\n", ct)
 
-	switch ct {
-	case "application/octet-stream":
+	if isExecutableFileType(ct) {
 		return installBinary(filename)
 	}
 	return installArchive(filename)
 }
 
-func getFileContentType(out io.Reader) (string, error) {
-	// Only the first 512 bytes are used to sniff the content type.
-	buffer := make([]byte, 512)
-
-	_, err := out.Read(buffer)
+func getFileType(out io.Reader) (string, error) {
+	kind, err := mimetype.DetectReader(out)
 	if err != nil {
 		return "", err
 	}
+	return kind.String(), nil
+}
 
-	// Use the net/http package's handy DectectContentType function. Always returns a valid
-	// content-type by returning "application/octet-stream" if no others seemed to match.
-	contentType := http.DetectContentType(buffer)
-
-	return contentType, nil
+func isExecutableFileType(ct string) bool {
+	switch ct {
+	case "application/octet-stream", "application/x-executable", "application/x-elf", "application/x-sharedlib":
+		return true
+	}
+	return false
 }

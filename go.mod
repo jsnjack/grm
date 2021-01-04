@@ -3,6 +3,7 @@ module github.com/jsnjack/grm
 go 1.13
 
 require (
+	github.com/gabriel-vasile/mimetype v1.1.2
 	github.com/google/go-cmp v0.5.2 // indirect
 	github.com/google/go-github/v32 v32.1.0
 	github.com/kr/pretty v0.2.1 // indirect
