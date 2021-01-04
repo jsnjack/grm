@@ -14,15 +14,19 @@ func Install(asset *github.ReleaseAsset, pkg *Package) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	logf("Installing %s...\n", filename)
 	file, err := os.Open(filename)
 	defer file.Close()
 	if err != nil {
 		return "", err
 	}
+
 	ct, err := getFileContentType(file)
 	if err != nil {
 		return "", err
 	}
+	logf("Content type %s\n", ct)
+
 	switch ct {
 	case "application/octet-stream":
 		return installBinary(filename)
