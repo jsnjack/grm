@@ -49,7 +49,7 @@ func CreatePackage(text string) (*Package, error) {
 	// Extract owner
 	split := strings.Split(text, "/")
 	if len(split) != 2 {
-		return nil, fmt.Errorf("Invalid package: expected <owner>/<repo>==<version>, got %s", text)
+		return nil, fmt.Errorf("invalid package: expected <owner>/<repo>==<version>, got %s", text)
 	}
 	p.Owner = split[0]
 
@@ -62,10 +62,10 @@ func CreatePackage(text string) (*Package, error) {
 
 	// Verify
 	if p.Owner == "" {
-		return nil, fmt.Errorf("Got empty <owner> from %s", text)
+		return nil, fmt.Errorf("got empty <owner> from %s", text)
 	}
 	if p.Repo == "" {
-		return nil, fmt.Errorf("Got empty <repo> from %s", text)
+		return nil, fmt.Errorf("got empty <repo> from %s", text)
 	}
 
 	return &p, nil

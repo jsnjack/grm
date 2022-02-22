@@ -72,7 +72,7 @@ var releaseCmd = &cobra.Command{
 			}
 
 			if stat.IsDir() {
-				return fmt.Errorf("The asset to upload can't be a directory")
+				return fmt.Errorf("the asset to upload can't be a directory")
 			}
 
 			bar := progressbar.NewOptions(

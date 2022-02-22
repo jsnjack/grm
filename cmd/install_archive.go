@@ -49,7 +49,7 @@ func installArchive(filename string) (string, error) {
 	}
 
 	if filenameA == "" {
-		return "", fmt.Errorf("Unable to find a binary file in archive")
+		return "", fmt.Errorf("unable to find a binary file in archive")
 	}
 	return installBinary(filenameA)
 }

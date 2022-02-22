@@ -58,7 +58,7 @@ var listCmd = &cobra.Command{
 						p.GetFullName(),
 						p.Version,
 						p.GetVerboseLocked(),
-						fmt.Sprintf(strings.Join(p.Filter, ", ")),
+						strings.Join(p.Filter, ", "),
 					)
 				}
 				return nil

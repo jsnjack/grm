@@ -45,7 +45,7 @@ func (g *GrmConfig) PutPackage(pkg *Package) error {
 func (g *GrmConfig) PutSetting(key string, value string) error {
 	_, ok := Settings[key]
 	if !ok {
-		return fmt.Errorf("Unknown key: %s", key)
+		return fmt.Errorf("unknown key: %s", key)
 	}
 	g.Settings[key] = value
 	return g.save()

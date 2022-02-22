@@ -16,10 +16,10 @@ func Install(asset *github.ReleaseAsset, pkg *Package) (string, error) {
 	}
 	logf("Installing %s...\n", filename)
 	file, err := os.Open(filename)
-	defer file.Close()
 	if err != nil {
 		return "", err
 	}
+	defer file.Close()
 
 	ct, err := getFileType(file)
 	if err != nil {

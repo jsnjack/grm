@@ -130,10 +130,9 @@ func selectAsset(assets []*github.ReleaseAsset, filter []string) (*github.Releas
 	var selected string
 	switch len(filtered) {
 	case 0:
-		return nil, fmt.Errorf("Supported asset not found")
+		return nil, fmt.Errorf("supported asset not found")
 	case 1:
 		selected = filtered[0]
-		break
 	default:
 		selected = filtered[askForNumber("Select suitable asset:", len(filtered)-1)]
 	}
@@ -145,7 +144,7 @@ func selectAsset(assets []*github.ReleaseAsset, filter []string) (*github.Releas
 		}
 	}
 
-	return nil, fmt.Errorf("Unexpected error when selecting the asset")
+	return nil, fmt.Errorf("unexpected error when selecting the asset")
 }
 
 func filterSuitableAssets(input []string, filters []string) []string {

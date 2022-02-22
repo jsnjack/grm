@@ -55,9 +55,9 @@ var infoCmd = &cobra.Command{
 					fmt.Printf("  %s\n", item.GetName())
 				}
 			} else {
-				fmt.Printf(fmt.Sprintf(infoPattern, "Version", release.GetTagName()))
-				fmt.Printf(fmt.Sprintf(infoPattern, "Published", release.GetPublishedAt().Format("2006-01-02")))
-				fmt.Printf(fmt.Sprintf(infoPattern, "URL", release.GetHTMLURL()))
+				fmt.Printf(infoPattern, "Version", release.GetTagName())
+				fmt.Printf(infoPattern, "Published", release.GetPublishedAt().Format("2006-01-02"))
+				fmt.Printf(infoPattern, "URL", release.GetHTMLURL())
 				fmt.Println("Assets:")
 				for _, item := range release.Assets {
 					fmt.Printf("  %s\n", item.GetName())

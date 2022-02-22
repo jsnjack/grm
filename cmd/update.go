@@ -22,9 +22,8 @@ var updateCmd = &cobra.Command{
 					return fmt.Errorf("requires a package name (e.g. jsnjack/kazy-go), got %s", item)
 				}
 			}
-			break
 		default:
-			return fmt.Errorf("Too many arguments")
+			return fmt.Errorf("too many arguments")
 		}
 		return nil
 	},

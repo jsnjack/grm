@@ -21,7 +21,7 @@ var setTokenCmd = &cobra.Command{
 				return nil
 			}
 		}
-		return fmt.Errorf("Unknown key: %s", args[0])
+		return fmt.Errorf("unknown key: %s", args[0])
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
