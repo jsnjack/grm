@@ -68,7 +68,7 @@ func TestInstall_filterSuitableAssets_empty_filter(t *testing.T) {
 	}
 	output := filterSuitableAssets(input, nil)
 	if len(output) != len(expected) {
-		t.Errorf("Unexpected amount of items in <output>")
+		t.Errorf("Unexpected amount of items in <output>: got %d want %d", len(output), len(expected))
 		return
 	}
 	for _, item := range expected {
@@ -114,7 +114,7 @@ func TestInstall_filterSuitableAssets_extended_filter(t *testing.T) {
 	output := filterSuitableAssets(input, []string{"extended"})
 
 	if len(output) != len(expected) {
-		t.Errorf("Unexpected amount of items in <output>")
+		t.Errorf("Unexpected amount of items in <output>: got %d want %d", len(output), len(expected))
 		return
 	}
 
@@ -160,7 +160,36 @@ func TestInstall_filterSuitableAssets_extended_tar_filter(t *testing.T) {
 	output := filterSuitableAssets(input, []string{"extended", "tar"})
 
 	if len(output) != len(expected) {
-		t.Errorf("Unexpected amount of items in <output>")
+		t.Errorf("Unexpected amount of items in <output>: got %d want %d", len(output), len(expected))
+		return
+	}
+
+	for _, item := range expected {
+		if !stringInSlice(item, output) {
+			t.Errorf("Expected %s to be in <output>", item)
+		}
+	}
+}
+
+func TestInstall_filterSuitableAssets_no_arm(t *testing.T) {
+	input := []string{
+		"checksums.txt",
+		"go-mod-upgrade_0.9.0_Darwin_arm64.tar.gz",
+		"go-mod-upgrade_0.9.0_Darwin_x86_64.tar.gz",
+		"go-mod-upgrade_0.9.0_Linux_arm64.tar.gz",
+		"go-mod-upgrade_0.9.0_Linux_i386.tar.gz",
+		"go-mod-upgrade_0.9.0_Linux_x86_64.tar.gz",
+		"go-mod-upgrade_0.9.0_Windows_arm64.tar.gz",
+		"go-mod-upgrade_0.9.0_Windows_i386.tar.gz",
+		"go-mod-upgrade_0.9.0_Windows_x86_64.tar.gz",
+	}
+	expected := []string{
+		"go-mod-upgrade_0.9.0_Linux_x86_64.tar.gz",
+	}
+	output := filterSuitableAssets(input, []string{})
+
+	if len(output) != len(expected) {
+		t.Errorf("Unexpected amount of items in <output>: got %d want %d", len(output), len(expected))
 		return
 	}
 

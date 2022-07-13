@@ -162,6 +162,7 @@ func filterSuitableAssets(input []string, filters []string) []string {
 	if runtime.GOARCH == "amd64" {
 		filtered = filterList(filtered, "64", false)
 		filtered = filterList(filtered, runtime.GOOS+"64", false)
+		filtered = filterList(filtered, "x86_64", false)
 	}
 	if runtime.GOARCH == "386" {
 		filtered = filterList(filtered, "32", false)
