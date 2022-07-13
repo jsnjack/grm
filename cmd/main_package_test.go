@@ -8,7 +8,7 @@ func TestUtils_CreatePackage_empty(t *testing.T) {
 		t.Errorf("Expected error, got <nil>")
 		return
 	}
-	if err.Error() != "Invalid package: expected <owner>/<repo>==<version>, got " {
+	if err.Error() != "invalid package: expected <owner>/<repo>==<version>, got " {
 		t.Errorf("Unexpected error: %s", err)
 	}
 }
@@ -19,7 +19,7 @@ func TestUtils_CreatePackage_oneEl(t *testing.T) {
 		t.Errorf("Expected error, got <nil>")
 		return
 	}
-	if err.Error() != "Invalid package: expected <owner>/<repo>==<version>, got jsnjack" {
+	if err.Error() != "invalid package: expected <owner>/<repo>==<version>, got jsnjack" {
 		t.Errorf("Unexpected error: %s", err)
 	}
 }
@@ -30,7 +30,7 @@ func TestUtils_CreatePackage_oneSlash(t *testing.T) {
 		t.Errorf("Expected error, got <nil>")
 		return
 	}
-	if err.Error() != "Got empty <owner> from /" {
+	if err.Error() != "got empty <owner> from /" {
 		t.Errorf("Unexpected error: %s", err)
 	}
 }
@@ -41,7 +41,7 @@ func TestUtils_CreatePackage_onlyOwner(t *testing.T) {
 		t.Errorf("Expected error, got <nil>")
 		return
 	}
-	if err.Error() != "Got empty <repo> from jsnjack/" {
+	if err.Error() != "got empty <repo> from jsnjack/" {
 		t.Errorf("Unexpected error: %s", err)
 	}
 }
