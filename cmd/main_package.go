@@ -5,16 +5,6 @@ import (
 	"strings"
 )
 
-// KnownAliases is a list of well-known repositories to simplify binary
-// installation from a release
-var KnownAliases = map[string]string{
-	"grm":          "jsnjack/grm",
-	"kazy":         "jsnjack/kazy-go",
-	"chromedriver": "jsnjack/chromedriver",
-	"geckodriver":  "mozilla/geckodriver",
-	"gotop":        "xxxserxxx/gotop",
-}
-
 // Package represents github package
 type Package struct {
 	Repo     string
