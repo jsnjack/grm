@@ -63,6 +63,9 @@ func CreatePackage(text string) (*Package, error) {
 	// Check if it is one of the known aliases
 	alias, ok := KnownAliases[packageName]
 	if ok {
+		if rootVerbose {
+			fmt.Printf("Found alias for '%s': %s\n", text, alias)
+		}
 		packageName = alias
 	}
 
