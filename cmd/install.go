@@ -151,33 +151,37 @@ func filterSuitableAssets(input []string, filters []string) []string {
 	filtered := input
 	if len(filters) != 0 {
 		for _, item := range filters {
-			filtered = filterList(filtered, item, false)
+			filtered = filterList(filtered, item, true)
 		}
 	}
 	// Filter by operating system
-	filtered = filterList(filtered, runtime.GOOS, false)
+	filtered = filterList(filtered, runtime.GOOS, true)
 	// Filter by architecture
-	filtered = filterList(filtered, runtime.GOARCH, false)
+	filtered = filterList(filtered, runtime.GOARCH, true)
 	// Extra filters
 	if runtime.GOARCH == "amd64" {
-		filtered = filterList(filtered, "64", false)
-		filtered = filterList(filtered, runtime.GOOS+"64", false)
-		filtered = filterList(filtered, "x86_64", false)
+		filtered = filterList(filtered, "64", true)
+		filtered = filterList(filtered, runtime.GOOS+"64", true)
+		filtered = filterList(filtered, "x86_64", true)
 	}
 	if runtime.GOARCH == "386" {
-		filtered = filterList(filtered, "32", false)
-		filtered = filterList(filtered, runtime.GOOS+"32", false)
+		filtered = filterList(filtered, "32", true)
+		filtered = filterList(filtered, runtime.GOOS+"32", true)
 	}
 	if runtime.GOOS == "darwin" {
-		filtered = filterList(filtered, "mac", false)
-		filtered = filterList(filtered, "macos", false)
+		filtered = filterList(filtered, "mac", true)
+		filtered = filterList(filtered, "macos", true)
 	}
+	// Exclude well-known system packages
+	filtered = filterList(filtered, ".deb", false)
+	filtered = filterList(filtered, ".rpm", false)
 	return filtered
 }
 
-// filterList filters list by `filter`. If `strict` is false returns original
-// list in case if it doesn't contain `filter`
-func filterList(list []string, filter string, strict bool) []string {
+// filterList filters list by `filter`. If the result is empty list, returns the original
+// list. If `positive` is true, makes sure that the item contains value from `filter`. Otherwise
+// excludes items which contain `filter`
+func filterList(list []string, filter string, positive bool) []string {
 	filtered := []string{}
 	if filter == "" {
 		filtered = list
@@ -185,13 +189,18 @@ func filterList(list []string, filter string, strict bool) []string {
 		for _, item := range list {
 			litem := strings.ToLower(item)
 			if strings.Contains(litem, filter) {
-				filtered = append(filtered, item)
+				if positive {
+					filtered = append(filtered, item)
+				}
+			} else {
+				if !positive {
+					filtered = append(filtered, item)
+				}
 			}
 		}
 	}
-	if strict {
-		return filtered
-	}
+
+	// Return full list if everything was filtered out
 	if len(filtered) == 0 {
 		filtered = list
 	}
