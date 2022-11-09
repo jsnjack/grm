@@ -6,14 +6,14 @@ import (
 
 func TestInstall_filterList_empty(t *testing.T) {
 	input := []string{"a", "b"}
-	output := filterList(input, "", true)
+	output := preferToContain(input, "")
 	if len(input) != len(output) {
 		t.Errorf("Expected nothing to be filtered")
 		return
 	}
 }
 
-func TestInstall_filterList_filter_positive(t *testing.T) {
+func TestInstall_filterList_filter(t *testing.T) {
 	input := []string{
 		"hugo_0.80.0_Linux-64bit.deb",
 		"hugo_0.80.0_Linux-64bit.tar.gz",
@@ -22,25 +22,9 @@ func TestInstall_filterList_filter_positive(t *testing.T) {
 		"hugo_extended_0.80.0_Linux-64bit.deb",
 		"hugo_extended_0.80.0_Linux-64bit.tar.gz",
 	}
-	output := filterList(input, "extended", true)
+	output := preferToContain(input, "extended")
 	if len(output) != 2 {
 		t.Errorf("Expected 2 values in output, got %d (%s)", len(output), output)
-		return
-	}
-}
-
-func TestInstall_filterList_filter_negative(t *testing.T) {
-	input := []string{
-		"hugo_0.80.0_Linux-64bit.deb",
-		"hugo_0.80.0_Linux-64bit.tar.gz",
-		"hugo_0.80.0_Linux-ARM64.deb",
-		"hugo_0.80.0_Linux-ARM64.tar.gz",
-		"hugo_extended_0.80.0_Linux-64bit.deb",
-		"hugo_extended_0.80.0_Linux-64bit.tar.gz",
-	}
-	output := filterList(input, "extended", false)
-	if len(output) != 4 {
-		t.Errorf("Expected 4 values in output, got %d (%s)", len(output), output)
 		return
 	}
 }
@@ -220,6 +204,28 @@ func TestInstall_filterSuitableAssets_filter_out_system_packages(t *testing.T) {
 	}
 	expected := []string{
 		"k6-v0.41.0-linux-amd64.tar.gz",
+	}
+	output := filterSuitableAssets(input, []string{})
+
+	if len(output) != len(expected) {
+		t.Errorf("Unexpected amount of items in <output>: got %d want %d", len(output), len(expected))
+		return
+	}
+
+	for _, item := range expected {
+		if !stringInSlice(item, output) {
+			t.Errorf("Expected %s to be in <output>, got %s", item, output)
+		}
+	}
+}
+
+func TestInstall_filterSuitableAssets_filter_out_asc(t *testing.T) {
+	input := []string{
+		"geckodriver-v0.32.0-linux64.tar.gz",
+		"geckodriver-v0.32.0-linux64.tar.gz.asc",
+	}
+	expected := []string{
+		"geckodriver-v0.32.0-linux64.tar.gz",
 	}
 	output := filterSuitableAssets(input, []string{})
 

@@ -151,37 +151,38 @@ func filterSuitableAssets(input []string, filters []string) []string {
 	filtered := input
 	if len(filters) != 0 {
 		for _, item := range filters {
-			filtered = filterList(filtered, item, true)
+			filtered = preferToContain(filtered, item)
 		}
 	}
 	// Filter by operating system
-	filtered = filterList(filtered, runtime.GOOS, true)
+	filtered = preferToContain(filtered, runtime.GOOS)
 	// Filter by architecture
-	filtered = filterList(filtered, runtime.GOARCH, true)
+	filtered = preferToContain(filtered, runtime.GOARCH)
 	// Extra filters
 	if runtime.GOARCH == "amd64" {
-		filtered = filterList(filtered, "64", true)
-		filtered = filterList(filtered, runtime.GOOS+"64", true)
-		filtered = filterList(filtered, "x86_64", true)
+		filtered = preferToContain(filtered, "64")
+		filtered = preferToContain(filtered, runtime.GOOS+"64")
+		filtered = preferToContain(filtered, "x86_64")
 	}
 	if runtime.GOARCH == "386" {
-		filtered = filterList(filtered, "32", true)
-		filtered = filterList(filtered, runtime.GOOS+"32", true)
+		filtered = preferToContain(filtered, "32")
+		filtered = preferToContain(filtered, runtime.GOOS+"32")
 	}
 	if runtime.GOOS == "darwin" {
-		filtered = filterList(filtered, "mac", true)
-		filtered = filterList(filtered, "macos", true)
+		filtered = preferToContain(filtered, "mac")
+		filtered = preferToContain(filtered, "macos")
 	}
-	// Exclude well-known system packages
-	filtered = filterList(filtered, ".deb", false)
-	filtered = filterList(filtered, ".rpm", false)
+	// Exclude well-known system packages and other extensions
+	filtered = exludeExtensions(filtered, ".deb")
+	filtered = exludeExtensions(filtered, ".rpm")
+	// asc files contain a PGP key (mozilla/geckodriver)
+	filtered = exludeExtensions(filtered, ".asc")
 	return filtered
 }
 
-// filterList filters list by `filter`. If the result is empty list, returns the original
-// list. If `positive` is true, makes sure that the item contains value from `filter`. Otherwise
-// excludes items which contain `filter`
-func filterList(list []string, filter string, positive bool) []string {
+// preferToContain returns list which contains `filter`. If the result is empty
+// list, returns the original list
+func preferToContain(list []string, filter string) []string {
 	filtered := []string{}
 	if filter == "" {
 		filtered = list
@@ -189,13 +190,29 @@ func filterList(list []string, filter string, positive bool) []string {
 		for _, item := range list {
 			litem := strings.ToLower(item)
 			if strings.Contains(litem, filter) {
-				if positive {
-					filtered = append(filtered, item)
-				}
-			} else {
-				if !positive {
-					filtered = append(filtered, item)
-				}
+				filtered = append(filtered, item)
+			}
+		}
+	}
+
+	// Return full list if everything was filtered out
+	if len(filtered) == 0 {
+		filtered = list
+	}
+	return filtered
+}
+
+// exludeExtensions removes records which end with `ext` from list. If the result
+// is empty list, returns the original list
+func exludeExtensions(list []string, ext string) []string {
+	filtered := []string{}
+	if ext == "" {
+		filtered = list
+	} else {
+		for _, item := range list {
+			litem := strings.ToLower(item)
+			if !strings.HasSuffix(litem, ext) {
+				filtered = append(filtered, item)
 			}
 		}
 	}
