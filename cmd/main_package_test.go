@@ -96,3 +96,34 @@ func TestUtils_CreatePackage_okVersion2(t *testing.T) {
 		t.Errorf("Expected v1==, got %s", p.Version)
 	}
 }
+
+func TestUtils_CreatePackage_alias(t *testing.T) {
+	p, err := CreatePackage("grm")
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+		return
+	}
+	if p.Owner != "jsnjack" {
+		t.Errorf("Expected jsnjack, got %s", p.Owner)
+	}
+	if p.Repo != "grm" {
+		t.Errorf("Expected kazy-go, got %s", p.Repo)
+	}
+}
+
+func TestUtils_CreatePackage_alias_with_version(t *testing.T) {
+	p, err := CreatePackage("grm==v0.50")
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+		return
+	}
+	if p.Owner != "jsnjack" {
+		t.Errorf("Expected jsnjack, got %s", p.Owner)
+	}
+	if p.Repo != "grm" {
+		t.Errorf("Expected kazy-go, got %s", p.Repo)
+	}
+	if p.Version != "v0.50" {
+		t.Errorf("Expected v0.50, got %s", p.Version)
+	}
+}

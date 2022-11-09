@@ -5,6 +5,12 @@ import (
 	"strings"
 )
 
+// KnownAliases is a list of well-known repositories to simplify binary
+// installation from a release
+var KnownAliases = map[string]string{
+	"grm": "jsnjack/grm",
+}
+
 // Package represents github package
 type Package struct {
 	Repo     string
@@ -46,26 +52,34 @@ func (p *Package) VerifyVersion(version string) error {
 func CreatePackage(text string) (*Package, error) {
 	p := Package{}
 
+	// Extract version
+	splitVersion := strings.SplitN(text, "==", 2)
+	if len(splitVersion) == 2 {
+		p.Version = splitVersion[1]
+	}
+
+	packageName := splitVersion[0]
+
+	// Check if it is one of the known aliases
+	alias, ok := KnownAliases[packageName]
+	if ok {
+		packageName = alias
+	}
+
 	// Extract owner
-	split := strings.Split(text, "/")
+	split := strings.Split(packageName, "/")
 	if len(split) != 2 {
-		return nil, fmt.Errorf("invalid package: expected <owner>/<repo>==<version>, got %s", text)
+		return nil, fmt.Errorf("invalid package: expected <owner>/<repo>==<version>, got %s", packageName)
 	}
 	p.Owner = split[0]
-
-	// Extract version and repo
-	split2 := strings.SplitN(split[1], "==", 2)
-	p.Repo = split2[0]
-	if len(split2) == 2 {
-		p.Version = split2[1]
-	}
+	p.Repo = split[1]
 
 	// Verify
 	if p.Owner == "" {
-		return nil, fmt.Errorf("got empty <owner> from %s", text)
+		return nil, fmt.Errorf("got empty <owner> from %s", packageName)
 	}
 	if p.Repo == "" {
-		return nil, fmt.Errorf("got empty <repo> from %s", text)
+		return nil, fmt.Errorf("got empty <repo> from %s", packageName)
 	}
 
 	return &p, nil
