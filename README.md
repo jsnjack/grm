@@ -20,6 +20,7 @@ Usage:
   grm [command]
 
 Available Commands:
+  aliases     Print table of known package aliases
   help        Help about any command
   info        Show information about a package
   install     Install a package from GitHub releases
@@ -36,8 +37,10 @@ Available Commands:
 Flags:
   -h, --help           help for grm
       --token string   GitHub API token
+  -v, --verbose        Enable verbose logging
   -y, --yes            Confirm all
 
+Use "grm [command] --help" for more information about a command.
 ```
 
 #### How to install specific version of hugo?
