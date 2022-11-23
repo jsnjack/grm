@@ -43,7 +43,7 @@ func getFileType(out io.Reader) (string, error) {
 
 func isExecutableFileType(ct string) bool {
 	switch ct {
-	case "application/octet-stream", "application/x-executable", "application/x-elf", "application/x-sharedlib":
+	case "application/octet-stream", "application/x-executable", "application/x-elf", "application/x-sharedlib", "application/x-mach-binary":
 		return true
 	}
 	return false
