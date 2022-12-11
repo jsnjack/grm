@@ -19,6 +19,10 @@ var KnownAliases = map[string]string{
 	"k6":           "grafana/k6",
 	"kazy":         "jsnjack/kazy-go",
 	"mech":         "jsnjack/mech",
+	"monova":       "jsnjack/monova",
+	"selenium":     "SeleniumHQ/selenium",
+	"sslcheck":     "jsnjack/sslcheck",
+	"sup":          "jsnjack/sup",
 }
 
 const aliasesPattern = "%-20s %-40s\n"
