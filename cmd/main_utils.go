@@ -65,18 +65,23 @@ func downloadFile(asset *github.ReleaseAsset, pkg *Package) (string, error) {
 	return path + asset.GetName(), nil
 }
 
-func installBinary(filename string) (string, error) {
+func installBinary(filename string, renameBinaryTo string) (string, error) {
 	logln("Installing as a binary")
 	tmpDir := getTmpDir(filename)
 
-	fmt.Printf("Installing %s in %s...\n", strings.TrimPrefix(filename, tmpDir), DefaultBinDir)
+	installedBinaryName := renameBinaryTo
+	if installedBinaryName == "" {
+		installedBinaryName = filepath.Base(filename)
+	}
+	installedFile := fmt.Sprintf("%s%s", DefaultBinDir, installedBinaryName)
 
-	installedFile := fmt.Sprintf("%s%s", DefaultBinDir, filepath.Base(filename))
+	fmt.Printf("Installing %s to %s...\n", strings.TrimPrefix(filename, tmpDir), installedFile)
+
 	err := removeBinary(installedFile)
 	if err != nil {
 		return "", err
 	}
-	cmdCp := exec.Command("/bin/sh", "-c", fmt.Sprintf("sudo cp %s %s", filename, DefaultBinDir))
+	cmdCp := exec.Command("/bin/sh", "-c", fmt.Sprintf("sudo cp %s %s", filename, installedFile))
 	err = cmdCp.Run()
 	if err != nil {
 		return "", err

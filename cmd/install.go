@@ -13,6 +13,7 @@ import (
 var installFilter []string
 var installRefresh bool
 var installLock bool
+var installRename string
 
 // installCmd represents the install command
 var installCmd = &cobra.Command{
@@ -23,6 +24,12 @@ var installCmd = &cobra.Command{
 		if len(args) == 0 {
 			return fmt.Errorf("requires a package name (e.g. jsnjack/kazy-go)")
 		}
+
+		// Only one package can be renamed
+		if len(args) > 1 && installRename != "" {
+			return fmt.Errorf("cannot rename multiple packages")
+		}
+
 		for _, item := range args {
 			_, err := CreatePackage(item)
 			if err != nil {
@@ -44,6 +51,9 @@ var installCmd = &cobra.Command{
 				return err
 			}
 			pkg.Filter = installFilter
+			if installRename != "" {
+				pkg.RenameBinaryTo = installRename
+			}
 
 			// Check that package is not locked
 			for _, installedItem := range config.Packages {
@@ -109,6 +119,7 @@ considered suitable`,
 	)
 	installCmd.Flags().BoolVarP(&installRefresh, "refresh", "r", false, "Reinstall package")
 	installCmd.Flags().BoolVarP(&installLock, "lock", "l", false, "Lock package version")
+	installCmd.Flags().StringVarP(&installRename, "rename", "n", "", "Rename binary file during the installation")
 }
 
 func selectAsset(assets []*github.ReleaseAsset, filter []string) (*github.ReleaseAsset, error) {

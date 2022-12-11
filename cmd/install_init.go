@@ -28,9 +28,9 @@ func Install(asset *github.ReleaseAsset, pkg *Package) (string, error) {
 	logf("File type %s\n", ct)
 
 	if isExecutableFileType(ct) {
-		return installBinary(filename)
+		return installBinary(filename, pkg.RenameBinaryTo)
 	}
-	return installArchive(filename)
+	return installArchive(filename, pkg.RenameBinaryTo)
 }
 
 func getFileType(out io.Reader) (string, error) {
