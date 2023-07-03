@@ -182,12 +182,16 @@ func filterSuitableAssets(input []string, filters []string) []string {
 	if runtime.GOOS == "darwin" {
 		filtered = preferToContain(filtered, "mac")
 		filtered = preferToContain(filtered, "macos")
+		filtered = preferToContain(filtered, "darwin")
 	}
 	// Exclude well-known system packages and other extensions
 	filtered = exludeExtensions(filtered, ".deb")
 	filtered = exludeExtensions(filtered, ".rpm")
 	// asc files contain a PGP key (mozilla/geckodriver)
 	filtered = exludeExtensions(filtered, ".asc")
+	// checksums
+	filtered = exludeExtensions(filtered, ".sha256")
+	filtered = exludeExtensions(filtered, ".sha256sum")
 	return filtered
 }
 
