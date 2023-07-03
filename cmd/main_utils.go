@@ -146,7 +146,7 @@ func askForNumber(msg string, to int) int {
 	if rootYes {
 		return 0
 	}
-	fmt.Printf("%s [0-%d] ", msg, to)
+	fmt.Printf("%s [1-%d] ", msg, to)
 	var response string
 	_, err := fmt.Scanln(&response)
 	if err != nil {
@@ -157,7 +157,7 @@ func askForNumber(msg string, to int) int {
 		fmt.Printf("  Provide a number (%s)\n", err)
 		return askForNumber(msg, to)
 	}
-	if responseInt > to || responseInt < 0 {
+	if responseInt > to || responseInt < 1 {
 		fmt.Println("  Out of range")
 		return askForNumber(msg, to)
 	}

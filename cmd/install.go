@@ -134,7 +134,7 @@ func selectAsset(assets []*github.ReleaseAsset, filter []string) (*github.Releas
 	// Print suitable assets
 	fmt.Printf("Found %d suitable assets\n", len(filtered))
 	for id, item := range filtered {
-		fmt.Printf("  %d) %s\n", id, item)
+		fmt.Printf("  %d) %s\n", id+1, item)
 	}
 
 	// Select the asset
@@ -145,7 +145,7 @@ func selectAsset(assets []*github.ReleaseAsset, filter []string) (*github.Releas
 	case 1:
 		selected = filtered[0]
 	default:
-		selected = filtered[askForNumber("Select suitable asset:", len(filtered)-1)]
+		selected = filtered[askForNumber("Select suitable asset:", len(filtered))-1]
 	}
 
 	fmt.Printf("Selected asset: %s\n", selected)
