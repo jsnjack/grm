@@ -144,7 +144,7 @@ func generateRandomString(n int) string {
 
 func askForNumber(msg string, to int) int {
 	if rootYes {
-		return 0
+		return 1
 	}
 	fmt.Printf("%s [1-%d] ", msg, to)
 	var response string
