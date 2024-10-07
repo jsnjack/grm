@@ -285,6 +285,28 @@ func TestInstall_filterSuitableAssets_filter_out_md5(t *testing.T) {
 	}
 }
 
+func TestInstall_filterSuitableAssets_filter_out_sha(t *testing.T) {
+	input := []string{
+		"micro-2.0.14-linux64-static.tar.gz",
+		"micro-2.0.14-linux64-static.tar.gz.sha",
+	}
+	expected := []string{
+		"micro-2.0.14-linux64-static.tar.gz",
+	}
+	output := filterSuitableAssets(input, []string{})
+
+	if len(output) != len(expected) {
+		t.Errorf("Unexpected amount of items in <output>: got %d want %d", len(output), len(expected))
+		return
+	}
+
+	for _, item := range expected {
+		if !stringInSlice(item, output) {
+			t.Errorf("Expected %s to be in <output>, got %s", item, output)
+		}
+	}
+}
+
 func stringInSlice(a string, list []string) bool {
 	for _, b := range list {
 		if b == a {
