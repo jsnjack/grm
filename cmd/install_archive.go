@@ -29,7 +29,7 @@ func installArchive(filename string, renameBinaryTo string) (string, error) {
 
 // findBinaryFile finds a binary file in the given directory
 func findBinaryFile(tmpDir string) (string, error) {
-	var filename string
+	var binaryFilepath string
 	err := filepath.Walk(tmpDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -46,8 +46,11 @@ func findBinaryFile(tmpDir string) (string, error) {
 				ct = "unknown"
 			}
 			fmt.Printf("  %-50s %s\n", strings.TrimPrefix(path, tmpDir), ct)
-			if filename == "" && isExecutableFileType(ct) {
-				filename = path
+			filename := filepath.Base(path)
+			// Ignore files starting with "._" (macOS), they are not executable
+			// https://github.com/jsnjack/grm/issues/12
+			if binaryFilepath == "" && isExecutableFileType(ct) && !strings.HasPrefix(filename, "._") {
+				binaryFilepath = path
 			}
 		}
 		return nil
@@ -57,8 +60,8 @@ func findBinaryFile(tmpDir string) (string, error) {
 		return "", err
 	}
 
-	if filename == "" {
+	if binaryFilepath == "" {
 		return "", fmt.Errorf("unable to find a binary file in archive")
 	}
-	return filename, nil
+	return binaryFilepath, nil
 }
