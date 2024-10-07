@@ -192,6 +192,7 @@ func filterSuitableAssets(input []string, filters []string) []string {
 	// checksums
 	filtered = exludeExtensions(filtered, ".sha256")
 	filtered = exludeExtensions(filtered, ".sha256sum")
+	filtered = exludeExtensions(filtered, ".md5")
 	return filtered
 }
 

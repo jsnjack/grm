@@ -263,6 +263,28 @@ func TestInstall_filterSuitableAssets_filter_out_sha256sum(t *testing.T) {
 	}
 }
 
+func TestInstall_filterSuitableAssets_filter_out_md5(t *testing.T) {
+	input := []string{
+		"cnotes-sftp-client-0.0.4-linux-amd64.tar.gz",
+		"cnotes-sftp-client-0.0.4-linux-amd64.tar.gz.md5",
+	}
+	expected := []string{
+		"cnotes-sftp-client-0.0.4-linux-amd64.tar.gz",
+	}
+	output := filterSuitableAssets(input, []string{})
+
+	if len(output) != len(expected) {
+		t.Errorf("Unexpected amount of items in <output>: got %d want %d", len(output), len(expected))
+		return
+	}
+
+	for _, item := range expected {
+		if !stringInSlice(item, output) {
+			t.Errorf("Expected %s to be in <output>, got %s", item, output)
+		}
+	}
+}
+
 func stringInSlice(a string, list []string) bool {
 	for _, b := range list {
 		if b == a {
