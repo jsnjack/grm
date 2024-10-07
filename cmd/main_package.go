@@ -15,6 +15,7 @@ type Package struct {
 	Locked         bool
 	Filename       string
 	RenameBinaryTo string
+	Sudo           string
 }
 
 // GetFullName returns full package name, e.g. jsnjack/kazy-go

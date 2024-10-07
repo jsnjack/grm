@@ -65,7 +65,7 @@ func downloadFile(asset *github.ReleaseAsset, pkg *Package) (string, error) {
 	return path + asset.GetName(), nil
 }
 
-func installBinary(filename string, renameBinaryTo string) (string, error) {
+func installBinary(filename string, renameBinaryTo string, sudo string) (string, error) {
 	logln("Installing as a binary")
 	tmpDir := getTmpDir(filename)
 
@@ -77,16 +77,18 @@ func installBinary(filename string, renameBinaryTo string) (string, error) {
 
 	fmt.Printf("Installing %s to %s...\n", strings.TrimPrefix(filename, tmpDir), installedFile)
 
-	err := removeBinary(installedFile)
+	err := removeBinary(installedFile, sudo)
 	if err != nil {
 		return "", err
 	}
-	cmdCp := exec.Command("/bin/sh", "-c", fmt.Sprintf("sudo cp %s %s", filename, installedFile))
+	cmdCp := exec.Command("/bin/sh", "-c", fmt.Sprintf("%scp %s %s", sudo, filename, installedFile))
 	err = cmdCp.Run()
 	if err != nil {
 		return "", err
 	}
-	cmd := exec.Command("/bin/sh", "-c", "sudo chmod +x "+installedFile)
+
+	cmd := exec.Command("/bin/sh", "-c", sudo+"chmod +x "+installedFile)
+
 	err = cmd.Run()
 
 	if strings.HasPrefix(tmpDir, DefaultTmpDirPattern) {
@@ -100,8 +102,8 @@ func installBinary(filename string, renameBinaryTo string) (string, error) {
 	return installedFile, err
 }
 
-func removeBinary(filename string) error {
-	cmdRm := exec.Command("/bin/sh", "-c", fmt.Sprintf("sudo rm -f %s", filename))
+func removeBinary(filename string, sudo string) error {
+	cmdRm := exec.Command("/bin/sh", "-c", fmt.Sprintf("%srm -f %s", sudo, filename))
 	err := cmdRm.Run()
 	return err
 }

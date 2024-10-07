@@ -14,6 +14,7 @@ var installFilter []string
 var installRefresh bool
 var installLock bool
 var installRename string
+var installSudo bool
 
 // installCmd represents the install command
 var installCmd = &cobra.Command{
@@ -53,6 +54,9 @@ var installCmd = &cobra.Command{
 			pkg.Filter = installFilter
 			if installRename != "" {
 				pkg.RenameBinaryTo = installRename
+			}
+			if installSudo {
+				pkg.Sudo = "sudo "
 			}
 
 			// Check that package is not locked
@@ -120,6 +124,7 @@ considered suitable`,
 	installCmd.Flags().BoolVarP(&installRefresh, "refresh", "r", false, "Reinstall package")
 	installCmd.Flags().BoolVarP(&installLock, "lock", "l", false, "Lock package version")
 	installCmd.Flags().StringVarP(&installRename, "rename", "n", "", "Rename binary file during the installation")
+	installCmd.Flags().BoolVarP(&installSudo, "sudo", "s", true, "Use sudo to install the package")
 }
 
 func selectAsset(assets []*github.ReleaseAsset, filter []string) (*github.ReleaseAsset, error) {

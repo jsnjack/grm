@@ -9,7 +9,7 @@ import (
 	"github.com/mholt/archiver/v3"
 )
 
-func installArchive(filename string, renameBinaryTo string) (string, error) {
+func installArchive(filename string, renameBinaryTo string, sudo string) (string, error) {
 	logln("Installing from an archive")
 	tmpDir := getTmpDir(filename)
 	fmt.Println("Unpacking archive...", strings.TrimPrefix(filename, tmpDir))
@@ -51,5 +51,5 @@ func installArchive(filename string, renameBinaryTo string) (string, error) {
 	if filenameA == "" {
 		return "", fmt.Errorf("unable to find a binary file in archive")
 	}
-	return installBinary(filenameA, renameBinaryTo)
+	return installBinary(filenameA, renameBinaryTo, sudo)
 }

@@ -43,7 +43,7 @@ var removeCmd = &cobra.Command{
 				return nil
 			}
 			// Remove binary
-			err = removeBinary(pkg.Filename)
+			err = removeBinary(pkg.Filename, pkg.Sudo)
 			if err != nil {
 				return err
 			}
