@@ -15,9 +15,16 @@ func installArchive(filename string, renameBinaryTo string) (string, error) {
 	fmt.Println("Unpacking archive...", strings.TrimPrefix(filename, tmpDir))
 	err := archiver.Unarchive(filename, tmpDir)
 	if err != nil {
-		return "", err
+		// Check if maybe it is a compressed file
+		dest := filepath.Join(tmpDir, strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename)))
+		err = archiver.DecompressFile(filename, dest)
+		if err != nil {
+			return "", err
+		}
+		logf("Decompressed to %s\n", dest)
+	} else {
+		logf("Unpacked to %s\n", tmpDir)
 	}
-	logf("Unpacked to %s\n", tmpDir)
 
 	fmt.Println("Looking for a binary file...")
 	filenameA, err := findBinaryFile(tmpDir)
