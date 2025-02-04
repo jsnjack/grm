@@ -307,6 +307,29 @@ func TestInstall_filterSuitableAssets_filter_out_sha(t *testing.T) {
 	}
 }
 
+func TestInstall_filterSuitableAssets_filter_x86(t *testing.T) {
+	input := []string{
+		"tree-sitter-linux-arm64.gz",
+		"tree-sitter-linux-powerpc64.gz",
+		"tree-sitter-linux-x64.gz",
+	}
+	expected := []string{
+		"tree-sitter-linux-x64.gz",
+	}
+	output := filterSuitableAssets(input, []string{})
+
+	if len(output) != len(expected) {
+		t.Errorf("Unexpected amount of items in <output>: got %d want %d", len(output), len(expected))
+		return
+	}
+
+	for _, item := range expected {
+		if !stringInSlice(item, output) {
+			t.Errorf("Expected %s to be in <output>, got %s", item, output)
+		}
+	}
+}
+
 func stringInSlice(a string, list []string) bool {
 	for _, b := range list {
 		if b == a {
