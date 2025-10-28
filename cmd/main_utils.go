@@ -176,7 +176,7 @@ func askForConfirmation(msg string) bool {
 	if rootYes {
 		return true
 	}
-	fmt.Printf(msg + " [y/n] ")
+	fmt.Print(msg + " [y/n] ")
 	var response string
 	_, err := fmt.Scanln(&response)
 	if err != nil {
