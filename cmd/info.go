@@ -61,10 +61,10 @@ var infoCmd = &cobra.Command{
 				fmt.Println("Assets:")
 				for _, item := range release.Assets {
 					fmt.Printf("  %s\n", item.GetName())
-					fmt.Printf("    " + fmt.Sprintf(infoPattern, "Type", item.GetContentType()))
-					fmt.Printf("    " + fmt.Sprintf(infoPattern, "Downloads", strconv.Itoa(item.GetDownloadCount())))
-					fmt.Printf("    " + fmt.Sprintf(infoPattern, "Download URL", item.GetBrowserDownloadURL()))
-					fmt.Printf("    " + fmt.Sprintf(infoPattern, "Size", strconv.Itoa(item.GetSize()/1024/1024)+"MB"))
+					fmt.Printf("    "+infoPattern, "Type", item.GetContentType())
+					fmt.Printf("    "+infoPattern, "Downloads", strconv.Itoa(item.GetDownloadCount()))
+					fmt.Printf("    "+infoPattern, "Download URL", item.GetBrowserDownloadURL())
+					fmt.Printf("    "+infoPattern, "Size", strconv.Itoa(item.GetSize()/1024/1024)+"MB")
 					fmt.Println()
 				}
 			}
