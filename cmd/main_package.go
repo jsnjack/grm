@@ -15,6 +15,8 @@ type Package struct {
 	Locked         bool
 	Filename       string
 	RenameBinaryTo string
+	SystemPkgName  string
+	SystemPkgType  string // "deb" or "rpm"
 }
 
 // GetFullName returns full package name, e.g. jsnjack/kazy-go
@@ -30,14 +32,21 @@ func (p *Package) GetVerboseLocked() string {
 	return ""
 }
 
+// IsSystemPackage returns true if this package was installed via a system package manager
+func (p *Package) IsSystemPackage() bool {
+	return p.SystemPkgName != ""
+}
+
 // VerifyVersion verifies that correct package version is installed
 func (p *Package) VerifyVersion(version string) error {
 	if version != p.Version {
 		return fmt.Errorf("installed version %s, want %s", p.Version, version)
 	}
-	hash, _ := tomd5(p.Filename)
-	if p.MD5 != hash {
-		return fmt.Errorf("installed file hash %s, want %s", p.MD5, hash)
+	if p.Filename != "" {
+		hash, _ := tomd5(p.Filename)
+		if p.MD5 != hash {
+			return fmt.Errorf("installed file hash %s, want %s", p.MD5, hash)
+		}
 	}
 	return nil
 }

@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"runtime"
 	"strings"
 
@@ -185,9 +186,22 @@ func filterSuitableAssets(input []string, filters []string) []string {
 		filtered = preferToContain(filtered, "macos")
 		filtered = preferToContain(filtered, "darwin")
 	}
-	// Exclude well-known system packages and other extensions
-	filtered = exludeExtensions(filtered, ".deb")
-	filtered = exludeExtensions(filtered, ".rpm")
+	// Exclude system packages for package managers not available on this system
+	if _, err := exec.LookPath("dpkg"); err != nil {
+		logln("dpkg not found, excluding .deb assets")
+		filtered = exludeExtensions(filtered, ".deb")
+	} else {
+		logln("dpkg found, keeping .deb assets")
+	}
+	if _, err := exec.LookPath("rpm"); err != nil {
+		logln("rpm not found, excluding .rpm assets")
+		filtered = exludeExtensions(filtered, ".rpm")
+	} else {
+		logln("rpm found, keeping .rpm assets")
+	}
+	// AppImage is not supported
+	filtered = hardExcludeExtension(filtered, ".AppImage")
+	filtered = hardExcludeExtension(filtered, ".zsync")
 	// asc files contain a PGP key (mozilla/geckodriver)
 	filtered = exludeExtensions(filtered, ".asc")
 	// checksums
@@ -216,6 +230,17 @@ func preferToContain(list []string, filter string) []string {
 	// Return full list if everything was filtered out
 	if len(filtered) == 0 {
 		filtered = list
+	}
+	return filtered
+}
+
+// hardExcludeExtension removes records which end with `ext` from list unconditionally
+func hardExcludeExtension(list []string, ext string) []string {
+	filtered := []string{}
+	for _, item := range list {
+		if !strings.HasSuffix(strings.ToLower(item), strings.ToLower(ext)) {
+			filtered = append(filtered, item)
+		}
 	}
 	return filtered
 }

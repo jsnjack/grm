@@ -32,11 +32,13 @@ func (g *GrmConfig) save() error {
 
 // PutPackage saves package to config file
 func (g *GrmConfig) PutPackage(pkg *Package) error {
-	hash, err := tomd5(pkg.Filename)
-	if err != nil {
-		return err
+	if pkg.Filename != "" {
+		hash, err := tomd5(pkg.Filename)
+		if err != nil {
+			return err
+		}
+		pkg.MD5 = hash
 	}
-	pkg.MD5 = hash
 	g.Packages[pkg.GetFullName()] = *pkg
 	return g.save()
 }

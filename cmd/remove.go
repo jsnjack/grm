@@ -42,8 +42,11 @@ var removeCmd = &cobra.Command{
 			if ok := askForConfirmation(fmt.Sprintf("Are you sure you want to remove %s?", item)); !ok {
 				return nil
 			}
-			// Remove binary
-			err = removeBinary(pkg.Filename)
+			if pkg.IsSystemPackage() {
+				err = removeSystemPackage(&pkg)
+			} else {
+				err = removeBinary(pkg.Filename)
+			}
 			if err != nil {
 				return err
 			}

@@ -3,6 +3,8 @@ package cmd
 import (
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/google/go-github/v32/github"
@@ -15,6 +17,13 @@ func Install(asset *github.ReleaseAsset, pkg *Package) (string, error) {
 		return "", err
 	}
 	logf("Installing %s...\n", filename)
+
+	// Route system packages by extension before MIME detection
+	ext := strings.ToLower(filepath.Ext(filename))
+	if ext == ".deb" || ext == ".rpm" {
+		return installSystemPackage(filename, pkg)
+	}
+
 	file, err := os.Open(filename)
 	if err != nil {
 		return "", err
