@@ -94,7 +94,7 @@ func installBinary(filename string, renameBinaryTo string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	cmd := exec.Command("/bin/sh", "-c", sudo()+"chmod +x "+installedFile)
+	cmd := exec.Command("/bin/sh", "-c", sudo()+"chmod 755 "+installedFile)
 	err = cmd.Run()
 
 	if strings.HasPrefix(tmpDir, DefaultTmpDirPattern) {
