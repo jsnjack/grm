@@ -1,14 +1,14 @@
 module github.com/jsnjack/grm
 
-go 1.24.0
+go 1.25.0
 
 require (
-	github.com/gabriel-vasile/mimetype v1.4.10
+	github.com/gabriel-vasile/mimetype v1.4.13
 	github.com/google/go-github/v32 v32.1.0
 	github.com/mholt/archiver/v3 v3.5.1
 	github.com/schollz/progressbar/v2 v2.15.0
-	github.com/spf13/cobra v1.10.1
-	golang.org/x/oauth2 v0.32.0
+	github.com/spf13/cobra v1.10.2
+	golang.org/x/oauth2 v0.36.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
