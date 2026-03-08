@@ -52,16 +52,24 @@ func downloadFile(asset *github.ReleaseAsset, pkg *Package) (string, error) {
 	out = f
 	defer f.Close()
 
-	bar := progressbar.NewOptions(
-		asset.GetSize(),
-		progressbar.OptionSetBytes(asset.GetSize()),
-	)
-	out = io.MultiWriter(out, bar)
+	isTTY := false
+	if fi, err := os.Stdout.Stat(); err == nil {
+		isTTY = (fi.Mode() & os.ModeCharDevice) != 0
+	}
+	if isTTY && !rootNoProgress {
+		bar := progressbar.NewOptions(
+			asset.GetSize(),
+			progressbar.OptionSetBytes(asset.GetSize()),
+		)
+		out = io.MultiWriter(out, bar)
+	}
 	_, err = io.Copy(out, reader)
 	if err != nil {
 		return "", err
 	}
-	fmt.Println("")
+	if isTTY && !rootNoProgress {
+		fmt.Println("")
+	}
 	return path + asset.GetName(), nil
 }
 
