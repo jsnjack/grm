@@ -1,6 +1,9 @@
 package cmd
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
 func TestUtils_CreatePackage_empty(t *testing.T) {
 	_, err := CreatePackage("")
@@ -108,6 +111,77 @@ func TestUtils_CreatePackage_alias(t *testing.T) {
 	}
 	if p.Repo != "grm" {
 		t.Errorf("Expected kazy-go, got %s", p.Repo)
+	}
+}
+
+func TestPackage_IsSystemPackage_false_when_no_name(t *testing.T) {
+	p := Package{Filename: "/usr/local/bin/tool"}
+	if p.IsSystemPackage() {
+		t.Errorf("Expected false for package without SystemPkgName")
+	}
+}
+
+func TestPackage_IsSystemPackage_true_when_name_set(t *testing.T) {
+	p := Package{SystemPkgName: "github-desktop-plus", SystemPkgType: "rpm"}
+	if !p.IsSystemPackage() {
+		t.Errorf("Expected true for package with SystemPkgName set")
+	}
+}
+
+func TestPackage_VerifyVersion_mismatch(t *testing.T) {
+	p := Package{Version: "v1.0.0"}
+	err := p.VerifyVersion("v2.0.0")
+	if err == nil {
+		t.Errorf("Expected error on version mismatch, got nil")
+	}
+}
+
+func TestPackage_VerifyVersion_system_package_match(t *testing.T) {
+	// System packages have no Filename — version tag is the only check
+	p := Package{Version: "v1.0.0", SystemPkgName: "mypkg", SystemPkgType: "rpm"}
+	err := p.VerifyVersion("v1.0.0")
+	if err != nil {
+		t.Errorf("Expected nil for matching version with no file, got: %s", err)
+	}
+}
+
+func TestPackage_VerifyVersion_system_package_mismatch(t *testing.T) {
+	p := Package{Version: "v1.0.0", SystemPkgName: "mypkg", SystemPkgType: "rpm"}
+	err := p.VerifyVersion("v2.0.0")
+	if err == nil {
+		t.Errorf("Expected error on version mismatch for system package, got nil")
+	}
+}
+
+func TestPackage_VerifyVersion_binary_match(t *testing.T) {
+	// Create a temp file to simulate an installed binary
+	f, err := os.CreateTemp("", "grm-test-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(f.Name())
+	f.WriteString("binary content")
+	f.Close()
+
+	hash, _ := tomd5(f.Name())
+	p := Package{Version: "v1.0.0", Filename: f.Name(), MD5: hash}
+	if err := p.VerifyVersion("v1.0.0"); err != nil {
+		t.Errorf("Expected nil for matching version and hash, got: %s", err)
+	}
+}
+
+func TestPackage_VerifyVersion_binary_hash_mismatch(t *testing.T) {
+	f, err := os.CreateTemp("", "grm-test-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(f.Name())
+	f.WriteString("binary content")
+	f.Close()
+
+	p := Package{Version: "v1.0.0", Filename: f.Name(), MD5: "wronghash"}
+	if err := p.VerifyVersion("v1.0.0"); err == nil {
+		t.Errorf("Expected error on hash mismatch, got nil")
 	}
 }
 

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"os/exec"
 	"testing"
 )
 
@@ -202,8 +203,12 @@ func TestInstall_filterSuitableAssets_filter_out_system_packages(t *testing.T) {
 		"k6-v0.41.0-linux-amd64.rpm",
 		"k6-v0.41.0-linux-amd64.tar.gz",
 	}
-	expected := []string{
-		"k6-v0.41.0-linux-amd64.tar.gz",
+	expected := []string{"k6-v0.41.0-linux-amd64.tar.gz"}
+	if _, err := exec.LookPath("rpm"); err == nil {
+		expected = append(expected, "k6-v0.41.0-linux-amd64.rpm")
+	}
+	if _, err := exec.LookPath("dpkg"); err == nil {
+		expected = append(expected, "k6-v0.41.0-linux-amd64.deb")
 	}
 	output := filterSuitableAssets(input, []string{})
 
@@ -327,6 +332,67 @@ func TestInstall_filterSuitableAssets_filter_x86(t *testing.T) {
 		if !stringInSlice(item, output) {
 			t.Errorf("Expected %s to be in <output>, got %s", item, output)
 		}
+	}
+}
+
+func TestInstall_hardExcludeExtension_removes_match(t *testing.T) {
+	input := []string{"file.AppImage", "file.tar.gz"}
+	output := hardExcludeExtension(input, ".AppImage")
+	if len(output) != 1 || output[0] != "file.tar.gz" {
+		t.Errorf("Expected only file.tar.gz, got %v", output)
+	}
+}
+
+func TestInstall_hardExcludeExtension_empty_result(t *testing.T) {
+	input := []string{"a.AppImage", "b.AppImage"}
+	output := hardExcludeExtension(input, ".AppImage")
+	if len(output) != 0 {
+		t.Errorf("Expected empty result, got %v", output)
+	}
+}
+
+func TestInstall_hardExcludeExtension_case_insensitive(t *testing.T) {
+	input := []string{"file.APPIMAGE", "file.tar.gz"}
+	output := hardExcludeExtension(input, ".AppImage")
+	if len(output) != 1 || output[0] != "file.tar.gz" {
+		t.Errorf("Expected only file.tar.gz, got %v", output)
+	}
+}
+
+func TestInstall_filterSuitableAssets_appimage_always_excluded(t *testing.T) {
+	// AppImage should be excluded even when it's the only option
+	input := []string{
+		"app-x86_64.AppImage",
+		"app-x86_64.AppImage.zsync",
+	}
+	output := filterSuitableAssets(input, []string{})
+	if len(output) != 0 {
+		t.Errorf("Expected AppImage to always be excluded, got %v", output)
+	}
+}
+
+func TestInstall_filterSuitableAssets_appimage_excluded_with_alternatives(t *testing.T) {
+	input := []string{
+		"app-linux-x86_64.AppImage",
+		"app-linux-x86_64.AppImage.zsync",
+		"app-linux-x86_64.tar.gz",
+	}
+	expected := "app-linux-x86_64.tar.gz"
+	output := filterSuitableAssets(input, []string{})
+	if len(output) != 1 || output[0] != expected {
+		t.Errorf("Expected only %s, got %v", expected, output)
+	}
+}
+
+func TestInstall_filterSuitableAssets_zsync_always_excluded(t *testing.T) {
+	input := []string{
+		"app-linux-x86_64.tar.gz",
+		"app-linux-x86_64.tar.gz.zsync",
+	}
+	expected := "app-linux-x86_64.tar.gz"
+	output := filterSuitableAssets(input, []string{})
+	if len(output) != 1 || output[0] != expected {
+		t.Errorf("Expected only %s, got %v", expected, output)
 	}
 }
 
