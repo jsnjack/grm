@@ -10,7 +10,7 @@ type Package struct {
 	Repo           string
 	Owner          string
 	Version        string
-	VersionFilter  string   // ~= prefix/glob filter; resolved to Version after install
+	VersionFilter  string // ~= prefix/glob filter; resolved to Version after install
 	MD5            string
 	Filter         []string
 	Locked         bool
