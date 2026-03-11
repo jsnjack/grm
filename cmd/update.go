@@ -61,7 +61,6 @@ var updateCmd = &cobra.Command{
 		}
 
 		// Phase 1: check all packages for updates in parallel
-		fmt.Printf("Checking %d package(s) for updates...\n", len(toCheck))
 		results := make([]checkResult, len(toCheck))
 		var wg sync.WaitGroup
 		for i, p := range toCheck {
@@ -87,33 +86,65 @@ var updateCmd = &cobra.Command{
 				results[i] = r
 			}(i, p)
 		}
+
+		// Show animated pending state while goroutines run (TTY only)
+		pendingLines := 0
+		if colorEnabled {
+			fmt.Println()
+			pendingLines++
+			msgSync("Checking %d package(s) for updates...", len(toCheck))
+			pendingLines++
+			fmt.Println()
+			pendingLines++
+			for _, p := range toCheck {
+				msgSync("%-40s %s", p.GetFullName(), dim("checking..."))
+				pendingLines++
+			}
+		}
+
 		wg.Wait()
 
-		// Phase 2: print summary
-		fmt.Println()
+		// Phase 2: overwrite pending state, then print results
+		if pendingLines > 0 {
+			cursorUp(pendingLines)
+		}
+		// Clear-line prefix: only needed when overwriting animation
+		cl := ""
+		if pendingLines > 0 {
+			cl = "\033[2K"
+		}
+
+		fmt.Printf("%s\n", cl)
+		fmt.Printf("%s", cl)
+		msgOK("Checked %d package(s)", len(toCheck))
+		fmt.Printf("%s\n", cl)
+
 		var toUpdate []checkResult
 		for _, r := range results {
 			name := r.pkg.GetFullName()
+			fmt.Print(cl)
 			switch {
 			case r.locked:
-				fmt.Printf("  %-40s locked\n", name)
+				msgLocked("%-40s %s", name, yellow("locked"))
 			case r.err != nil:
-				fmt.Printf("  %-40s error: %s\n", name, r.err)
+				msgFail("%-40s %s", name, red("error: "+r.err.Error()))
 			case r.latest:
-				fmt.Printf("  %-40s latest (%s)\n", name, r.pkg.Version)
+				msgOK("%-40s %s", name, dim("latest ("+r.pkg.Version+")"))
 			default:
-				fmt.Printf("  %-40s %s -> %s\n", name, r.pkg.Version, r.release.GetTagName())
+				msgUpdate("%-40s %s %s %s", name, r.pkg.Version, cyan(sArrow), boldCyan(r.release.GetTagName()))
 				toUpdate = append(toUpdate, r)
 			}
 		}
 
 		if len(toUpdate) == 0 {
-			fmt.Println("\nAll packages are up to date")
+			fmt.Println()
+			msgOK("All packages are up to date")
 			return nil
 		}
 
 		// Phase 3: single confirmation
-		fmt.Printf("\n%d package(s) can be updated\n", len(toUpdate))
+		fmt.Println()
+		msgUpdate("%d package(s) can be updated", len(toUpdate))
 		if !askForConfirmation("Proceed with update?") {
 			return nil
 		}
@@ -121,10 +152,10 @@ var updateCmd = &cobra.Command{
 		// Phase 4: install sequentially (interactive prompts + config writes)
 		fmt.Println()
 		for _, r := range toUpdate {
-			fmt.Printf("Updating %s...\n", r.pkg.GetFullName())
+			msgInfo("Updating %s...", bold(r.pkg.GetFullName()))
 			err := installRelease(r.release, &r.pkg)
 			if err != nil {
-				fmt.Printf("  error: %s\n", err)
+				msgFail("%s", err)
 			}
 		}
 		return nil

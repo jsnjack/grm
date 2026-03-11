@@ -31,7 +31,7 @@ var setTokenCmd = &cobra.Command{
 		}
 		err = config.PutSetting(args[0], args[1])
 		if err == nil {
-			fmt.Println("ok")
+			msgOK("ok")
 		}
 		return err
 	},

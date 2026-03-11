@@ -8,9 +8,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const listPattern = "%-40s %-20s %-20s %s\n"
-const listRepoDescriptionPattern = "%-40s %s\n"
-
 var listRepoDescription bool
 var listFlat bool
 
@@ -26,22 +23,17 @@ var listCmd = &cobra.Command{
 		}
 		if len(config.Packages) > 0 {
 			if listRepoDescription {
-				// Print list of all packages and fetch their description from github
-				fmt.Printf(listRepoDescriptionPattern, "Package", "Description")
+				tableHeader([]int{40}, []string{"Package", "Description"})
 				client := CreateClient()
 				for _, p := range config.Packages {
 					var description string
 					repo, _, err := client.Repositories.Get(context.Background(), p.Owner, p.Repo)
 					if err != nil {
-						description = err.Error()
+						description = red(err.Error())
 					} else {
 						description = repo.GetDescription()
 					}
-					fmt.Printf(
-						listRepoDescriptionPattern,
-						p.GetFullName(),
-						description,
-					)
+					tableRow(padCol(p.GetFullName(), 40, nil), description)
 				}
 				return nil
 			} else if listFlat {
@@ -51,13 +43,16 @@ var listCmd = &cobra.Command{
 				fmt.Println()
 				return nil
 			} else {
-				fmt.Printf(listPattern, "Package", "Version", "Locked", "Filter")
+				tableHeader([]int{40, 20, 20}, []string{"Package", "Version", "Locked", "Filter"})
 				for _, p := range config.Packages {
-					fmt.Printf(
-						listPattern,
-						p.GetFullName(),
-						p.Version,
-						p.GetVerboseLocked(),
+					var lockedStyle func(string) string
+					if p.Locked {
+						lockedStyle = yellow
+					}
+					tableRow(
+						padCol(p.GetFullName(), 40, nil),
+						padCol(p.Version, 20, cyan),
+						padCol(p.GetVerboseLocked(), 20, lockedStyle),
 						strings.Join(p.Filter, ", "),
 					)
 				}

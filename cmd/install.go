@@ -79,7 +79,7 @@ Examples:
 			for _, installedItem := range config.Packages {
 				if installedItem.GetFullName() == pkg.GetFullName() {
 					if installedItem.Locked {
-						fmt.Printf("Package %s is locked\n", pkg.GetFullName())
+						msgLocked("%s is %s", bold(pkg.GetFullName()), yellow("locked"))
 						continue argsLoop
 					}
 				}
@@ -90,14 +90,14 @@ Examples:
 			if err != nil {
 				return err
 			}
-			fmt.Printf("Found release %s\n", release.GetTagName())
+			msgOK("Found release %s", boldCyan(release.GetTagName()))
 
 			if !installRefresh {
 				// Check if package of selected release has already been installed
 				for _, installedItem := range config.Packages {
 					if installedItem.GetFullName() == pkg.GetFullName() {
 						if installedItem.VerifyVersion(release.GetTagName()) == nil {
-							fmt.Printf("Package %s already at %s\n", installedItem.GetFullName(), installedItem.Version)
+							msgOK("%s already at %s", bold(installedItem.GetFullName()), cyan(installedItem.Version))
 							continue argsLoop
 						}
 					}
@@ -121,14 +121,6 @@ Examples:
 func init() {
 	rootCmd.AddCommand(installCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// installCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
 	installCmd.Flags().StringSliceVarP(
 		&installFilter, "filter", "f", installFilter,
 		`Asset's name should contain provided strings,
@@ -152,9 +144,9 @@ func selectAsset(assets []*github.ReleaseAsset, filter []string) (*github.Releas
 	filtered := filterSuitableAssets(assetNames, filter)
 
 	// Print suitable assets
-	fmt.Printf("Found %d suitable assets\n", len(filtered))
+	msgStep("Found %d suitable assets", len(filtered))
 	for id, item := range filtered {
-		fmt.Printf("  %d) %s\n", id+1, item)
+		fmt.Printf("    %s %s\n", dim(fmt.Sprintf("%d)", id+1)), item)
 	}
 
 	// Select the asset
@@ -168,7 +160,7 @@ func selectAsset(assets []*github.ReleaseAsset, filter []string) (*github.Releas
 		selected = filtered[askForNumber("Select suitable asset:", len(filtered))-1]
 	}
 
-	fmt.Printf("Selected asset: %s\n", selected)
+	msgOK("Selected asset %s", bold(selected))
 	for _, item := range assets {
 		if item.GetName() == selected {
 			return item, nil
@@ -334,7 +326,7 @@ func selectRelease(pkg *Package) (*github.RepositoryRelease, error) {
 }
 
 func installRelease(release *github.RepositoryRelease, pkg *Package) error {
-	fmt.Println("Inspecting assets...")
+	msgStep("Inspecting assets...")
 	// Select best mached asset
 	asset, err := selectAsset(release.Assets, pkg.Filter)
 	if err != nil {
@@ -358,6 +350,6 @@ func installRelease(release *github.RepositoryRelease, pkg *Package) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("done")
+	msgDone()
 	return nil
 }

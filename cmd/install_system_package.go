@@ -36,7 +36,7 @@ func installSystemPackage(filename string, pkg *Package) (string, error) {
 		return "", fmt.Errorf("unsupported system package extension: %s", ext)
 	}
 
-	fmt.Printf("Installing system package %s...\n", filepath.Base(filename))
+	msgStep("Installing system package %s", bold(filepath.Base(filename)))
 	cmd := exec.Command("/bin/sh", "-c", installCmd)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

@@ -32,14 +32,14 @@ var removeCmd = &cobra.Command{
 		for _, item := range args {
 			pkg, ok := config.Packages[item]
 			if !ok {
-				fmt.Printf("Package %s is not installed\n", item)
+				msgWarn("Package %s is not installed", bold(item))
 				continue
 			}
 			if pkg.Locked {
-				fmt.Printf("Package %s is locked\n", pkg.GetFullName())
+				msgLocked("%s is %s", bold(pkg.GetFullName()), yellow("locked"))
 				continue
 			}
-			if ok := askForConfirmation(fmt.Sprintf("Are you sure you want to remove %s?", item)); !ok {
+			if ok := askForConfirmation(fmt.Sprintf("Are you sure you want to remove %s?", bold(item))); !ok {
 				return nil
 			}
 			if pkg.IsSystemPackage() {

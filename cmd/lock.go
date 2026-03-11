@@ -39,7 +39,7 @@ var lockCmd = &cobra.Command{
 					return err
 				}
 			} else {
-				fmt.Printf("Package %s is not installed\n", item)
+				msgWarn("Package %s is not installed", bold(item))
 				continue
 			}
 		}

@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 )
 
@@ -17,7 +15,7 @@ var settingsCmd = &cobra.Command{
 			return err
 		}
 		for key := range Settings {
-			fmt.Printf("%s: %s\n", key, config.Settings[key])
+			tableRow(padCol(key, 20, bold), cyan(config.Settings[key]))
 		}
 		return nil
 	},

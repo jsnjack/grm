@@ -12,9 +12,6 @@ import (
 var infoAll bool
 var infoLong bool
 
-const infoAllPattern = "%-15s%-15s%-15s%s"
-const infoPattern = "%-20s %s\n"
-
 // infoCmd represents the info command
 var infoCmd = &cobra.Command{
 	Use:   "info <package>",
@@ -39,32 +36,31 @@ var infoCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			printReleaseInfoHeader()
+			tableHeader([]int{15, 15, 15}, []string{"Version", "Published", "Downloads", "URL"})
 			for _, item := range releases {
 				printReleaseInfo(item)
 			}
 		} else {
-			// Show just latest release
 			release, err := selectRelease(pkg)
 			if err != nil {
 				return err
 			}
 			if !infoLong {
-				fmt.Println(release.GetTagName())
+				fmt.Println(boldCyan(release.GetTagName()))
 				for _, item := range release.Assets {
-					fmt.Printf("  %s\n", item.GetName())
+					fmt.Printf("  %s %s\n", dim(sTriang), item.GetName())
 				}
 			} else {
-				fmt.Printf(infoPattern, "Version", release.GetTagName())
-				fmt.Printf(infoPattern, "Published", release.GetPublishedAt().Format("2006-01-02"))
-				fmt.Printf(infoPattern, "URL", release.GetHTMLURL())
-				fmt.Println("Assets:")
+				tableRow(padCol("Version", 20, bold), cyan(release.GetTagName()))
+				tableRow(padCol("Published", 20, bold), release.GetPublishedAt().Format("2006-01-02"))
+				tableRow(padCol("URL", 20, bold), release.GetHTMLURL())
+				fmt.Printf("  %s\n", bold("Assets:"))
 				for _, item := range release.Assets {
-					fmt.Printf("  %s\n", item.GetName())
-					fmt.Printf("    "+infoPattern, "Type", item.GetContentType())
-					fmt.Printf("    "+infoPattern, "Downloads", strconv.Itoa(item.GetDownloadCount()))
-					fmt.Printf("    "+infoPattern, "Download URL", item.GetBrowserDownloadURL())
-					fmt.Printf("    "+infoPattern, "Size", strconv.Itoa(item.GetSize()/1024/1024)+"MB")
+					fmt.Printf("    %s %s\n", cyan(sTriang), bold(item.GetName()))
+					fmt.Printf("      %s %s\n", padCol("Type", 20, dim), item.GetContentType())
+					fmt.Printf("      %s %s\n", padCol("Downloads", 20, dim), strconv.Itoa(item.GetDownloadCount()))
+					fmt.Printf("      %s %s\n", padCol("Download URL", 20, dim), item.GetBrowserDownloadURL())
+					fmt.Printf("      %s %s\n", padCol("Size", 20, dim), strconv.Itoa(item.GetSize()/1024/1024)+"MB")
 					fmt.Println()
 				}
 			}
@@ -73,30 +69,21 @@ var infoCmd = &cobra.Command{
 	},
 }
 
-func printReleaseInfoHeader() {
-	fmt.Println(fmt.Sprintf(infoAllPattern, "Version", "Published", "Downloads", "URL"))
-}
-
 func printReleaseInfo(release *github.RepositoryRelease) {
 	var downloads int
 	for _, item := range release.Assets {
 		downloads += item.GetDownloadCount()
 	}
-	fmt.Println(fmt.Sprintf(infoAllPattern, release.GetTagName(), release.GetPublishedAt().Format("2006-01-02"), strconv.Itoa(downloads), release.GetHTMLURL()))
+	tableRow(
+		padCol(release.GetTagName(), 15, cyan),
+		padCol(release.GetPublishedAt().Format("2006-01-02"), 15, dim),
+		padCol(strconv.Itoa(downloads), 15, nil),
+		dim(release.GetHTMLURL()),
+	)
 }
 
 func init() {
 	rootCmd.AddCommand(infoCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// infoCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// infoCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	infoCmd.Flags().BoolVarP(&infoAll, "all", "a", false, "Display all latest releases")
 	infoCmd.Flags().BoolVarP(&infoLong, "long", "l", false, "Display in long format")
 }

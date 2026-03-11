@@ -52,10 +52,6 @@ func downloadFile(asset *github.ReleaseAsset, pkg *Package) (string, error) {
 	out = f
 	defer f.Close()
 
-	isTTY := false
-	if fi, err := os.Stdout.Stat(); err == nil {
-		isTTY = (fi.Mode() & os.ModeCharDevice) != 0
-	}
 	if isTTY && !rootNoProgress {
 		bar := progressbar.NewOptions(
 			asset.GetSize(),
@@ -68,7 +64,7 @@ func downloadFile(asset *github.ReleaseAsset, pkg *Package) (string, error) {
 		return "", err
 	}
 	if isTTY && !rootNoProgress {
-		fmt.Println("")
+		fmt.Println()
 	}
 	return path + asset.GetName(), nil
 }
@@ -91,7 +87,7 @@ func installBinary(filename string, renameBinaryTo string) (string, error) {
 	}
 	installedFile := fmt.Sprintf("%s%s", DefaultBinDir, installedBinaryName)
 
-	fmt.Printf("Installing %s to %s...\n", strings.TrimPrefix(filename, tmpDir), installedFile)
+	msgStep("Installing %s %s %s", bold(strings.TrimPrefix(filename, tmpDir)), cyan(sArrow), bold(installedFile))
 
 	err := removeBinary(installedFile)
 	if err != nil {
@@ -162,7 +158,7 @@ func askForNumber(msg string, to int) int {
 	if rootYes {
 		return 1
 	}
-	fmt.Printf("%s [1-%d] ", msg, to)
+	fmt.Printf("%s %s ", msg, dim(fmt.Sprintf("[1-%d]", to)))
 	var response string
 	_, err := fmt.Scanln(&response)
 	if err != nil {
@@ -184,7 +180,7 @@ func askForConfirmation(msg string) bool {
 	if rootYes {
 		return true
 	}
-	fmt.Print(msg + " [y/n] ")
+	fmt.Print(msg + " " + dim("[y/n]") + " ")
 	var response string
 	_, err := fmt.Scanln(&response)
 	if err != nil {

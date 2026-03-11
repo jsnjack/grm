@@ -4,8 +4,6 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 )
 
@@ -25,16 +23,14 @@ var KnownAliases = map[string]string{
 	"sup":          "jsnjack/sup",
 }
 
-const aliasesPattern = "%-20s %-40s\n"
-
 // aliasesCmd represents the aliases command
 var aliasesCmd = &cobra.Command{
 	Use:   "aliases",
 	Short: "Print table of known package aliases",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf(aliasesPattern, "Alias", "Full package name")
+		tableHeader([]int{20}, []string{"Alias", "Full package name"})
 		for k, v := range KnownAliases {
-			fmt.Printf(aliasesPattern, k, v)
+			tableRow(padCol(k, 20, cyan), v)
 		}
 	},
 }

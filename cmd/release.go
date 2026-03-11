@@ -59,7 +59,7 @@ var releaseCmd = &cobra.Command{
 
 		// Upload assets
 		for _, item := range releaseFilename {
-			fmt.Printf("Uploading %s...\n", item)
+			msgSync("Uploading %s", bold(item))
 			f, err := os.Open(item)
 			if err != nil {
 				return err
@@ -100,7 +100,7 @@ var releaseCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Println("  done")
+			msgOK("Uploaded")
 		}
 
 		return nil
