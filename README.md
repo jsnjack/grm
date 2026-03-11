@@ -48,6 +48,20 @@ Use "grm [command] --help" for more information about a command.
 grm install gohugoio/hugo==v0.63.0 -f Linux-64
 ```
 
+#### How to install the most recent major version?
+Use the `~=` operator to filter releases by a version prefix or glob pattern.
+The most recent matching release is selected automatically.
+```bash
+# Install the most recent v0.63.x release
+grm install gohugoio/hugo~=v0.63
+
+# Install any v0.6x release (glob)
+grm install gohugoio/hugo~=v0.6*
+
+# Install any versioned stable release (glob with character class)
+grm install gohugoio/hugo~=v[0-9]*-stable
+```
+
 ### How to install it?
 > Make sure you have `curl` and `jq` installed (`sudo dnf install curl jq`)
 ```bash

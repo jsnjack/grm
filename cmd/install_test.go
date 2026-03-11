@@ -5,6 +5,66 @@ import (
 	"testing"
 )
 
+func TestMatchVersionFilter_prefix(t *testing.T) {
+	cases := []struct {
+		filter  string
+		tag     string
+		want    bool
+	}{
+		{"v146", "v146.0.7680.72", true},
+		{"v146", "v146", true},
+		{"v146", "v145.9.0", false},
+		{"v146", "v1460.0", true}, // prefix match — v1460 starts with v146
+		{"v146.", "v146.0.1", true},
+		{"v146.", "v1460.0", false},
+	}
+	for _, c := range cases {
+		got, err := matchVersionFilter(c.filter, c.tag)
+		if err != nil {
+			t.Errorf("filter=%q tag=%q: unexpected error: %s", c.filter, c.tag, err)
+			continue
+		}
+		if got != c.want {
+			t.Errorf("filter=%q tag=%q: got %v, want %v", c.filter, c.tag, got, c.want)
+		}
+	}
+}
+
+func TestMatchVersionFilter_glob(t *testing.T) {
+	cases := []struct {
+		filter  string
+		tag     string
+		want    bool
+		wantErr bool
+	}{
+		{"v146*", "v146.0.7680.72", true, false},
+		{"v146*", "v145.0", false, false},
+		{"v[0-9]*-stable", "v12-stable", true, false},
+		{"v[0-9]*-stable", "v12-beta", false, false},
+		{"*-chromium*", "v100-chromium-linux", true, false},
+		{"*-chromium*", "v100-firefox-linux", false, false},
+		{"v1[45][0-9]", "v146", true, false},
+		{"v1[45][0-9]", "v160", false, false},
+		{"[invalid", "v1", false, true}, // malformed glob
+	}
+	for _, c := range cases {
+		got, err := matchVersionFilter(c.filter, c.tag)
+		if c.wantErr {
+			if err == nil {
+				t.Errorf("filter=%q tag=%q: expected error, got nil", c.filter, c.tag)
+			}
+			continue
+		}
+		if err != nil {
+			t.Errorf("filter=%q tag=%q: unexpected error: %s", c.filter, c.tag, err)
+			continue
+		}
+		if got != c.want {
+			t.Errorf("filter=%q tag=%q: got %v, want %v", c.filter, c.tag, got, c.want)
+		}
+	}
+}
+
 func TestInstall_filterList_empty(t *testing.T) {
 	input := []string{"a", "b"}
 	output := preferToContain(input, "")

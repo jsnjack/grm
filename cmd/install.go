@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"path"
 	"runtime"
 	"strings"
 
@@ -20,6 +21,24 @@ var installRename string
 var installCmd = &cobra.Command{
 	Use:   "install <package> [<package>...]",
 	Short: "Install a package from GitHub releases",
+	Long: `Install a package from GitHub releases.
+
+Version specifiers:
+  <owner>/<repo>               install latest release
+  <owner>/<repo>==<tag>        install exact version  (e.g. ==v1.2.0)
+  <owner>/<repo>~=<filter>     install most recent release matching filter
+
+The ~= filter matches tag names by prefix. If the filter contains glob
+metacharacters (* ? [), standard glob matching is used instead:
+  jsnjack/grm~=v0.50           any tag starting with v0.50 (e.g. v0.50.1)
+  jsnjack/grm~=v0.5*           any tag starting with v0.5 (glob)
+  jsnjack/grm~=v[0-9]*-stable  any versioned stable tag (glob)
+
+Examples:
+  grm install jsnjack/grm
+  grm install jsnjack/grm==v0.50.0
+  grm install jsnjack/grm~=v0.50
+  grm install jsnjack/grm~=v0.*-stable`,
 	Args: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceErrors = true
 		if len(args) == 0 {
@@ -267,16 +286,51 @@ func exludeExtensions(list []string, ext string) []string {
 	return filtered
 }
 
+// matchVersionFilter reports whether tagName satisfies filter.
+// If filter contains glob metacharacters (* ? [) path.Match is used;
+// otherwise tagName must have filter as a prefix.
+func matchVersionFilter(filter, tagName string) (bool, error) {
+	if strings.ContainsAny(filter, "*?[") {
+		return path.Match(filter, tagName)
+	}
+	return strings.HasPrefix(tagName, filter), nil
+}
+
 func selectRelease(pkg *Package) (*github.RepositoryRelease, error) {
 	client := CreateClient()
-	if pkg.Version == "" {
+	if pkg.Version == "" && pkg.VersionFilter == "" {
 		// Get latest release
 		release, _, err := client.Repositories.GetLatestRelease(context.Background(), pkg.Owner, pkg.Repo)
 		return release, err
 	}
-	// Get specific release
-	release, _, err := client.Repositories.GetReleaseByTag(context.Background(), pkg.Owner, pkg.Repo, pkg.Version)
-	return release, err
+	if pkg.Version != "" {
+		// Get specific release by exact tag
+		release, _, err := client.Repositories.GetReleaseByTag(context.Background(), pkg.Owner, pkg.Repo, pkg.Version)
+		return release, err
+	}
+	// Find the most recent release whose tag matches the version filter.
+	// ListReleases returns releases in reverse-chronological order.
+	opt := &github.ListOptions{PerPage: 30}
+	for {
+		releases, resp, err := client.Repositories.ListReleases(context.Background(), pkg.Owner, pkg.Repo, opt)
+		if err != nil {
+			return nil, err
+		}
+		for _, release := range releases {
+			matched, err := matchVersionFilter(pkg.VersionFilter, release.GetTagName())
+			if err != nil {
+				return nil, fmt.Errorf("invalid version filter %q: %w", pkg.VersionFilter, err)
+			}
+			if matched {
+				return release, nil
+			}
+		}
+		if resp.NextPage == 0 {
+			break
+		}
+		opt.Page = resp.NextPage
+	}
+	return nil, fmt.Errorf("no release matching ~=%s found for %s/%s", pkg.VersionFilter, pkg.Owner, pkg.Repo)
 }
 
 func installRelease(release *github.RepositoryRelease, pkg *Package) error {
