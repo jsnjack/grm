@@ -62,6 +62,12 @@ grm install gohugoio/hugo~=v0.6*
 grm install gohugoio/hugo~=v[0-9]*-stable
 ```
 
+### Keeping grm up to date
+Once installed, `grm` can update itself:
+```bash
+grm install jsnjack/grm
+```
+
 ### How to install it?
 > Make sure you have `curl` and `jq` installed (`sudo dnf install curl jq`)
 ```bash
