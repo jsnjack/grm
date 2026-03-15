@@ -8,8 +8,9 @@ import (
 
 // removeCmd represents the remove command
 var removeCmd = &cobra.Command{
-	Use:   "remove <package> [<package>...]",
-	Short: "Remove a package",
+	Use:     "remove <package> [<package>...]",
+	Aliases: []string{"rm"},
+	Short:   "Remove a package",
 	Args: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceErrors = true
 		if len(args) == 0 {

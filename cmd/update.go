@@ -19,8 +19,9 @@ type checkResult struct {
 
 // updateCmd represents the update command
 var updateCmd = &cobra.Command{
-	Use:   "update [<package>]",
-	Short: "Update installed packages",
+	Use:     "update [<package>]",
+	Aliases: []string{"u"},
+	Short:   "Update installed packages",
 	Args: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceErrors = true
 		switch len(args) {

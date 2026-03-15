@@ -19,8 +19,9 @@ var installRename string
 
 // installCmd represents the install command
 var installCmd = &cobra.Command{
-	Use:   "install <package> [<package>...]",
-	Short: "Install a package from GitHub releases",
+	Use:     "install <package> [<package>...]",
+	Aliases: []string{"i"},
+	Short:   "Install a package from GitHub releases",
 	Long: `Install a package from GitHub releases.
 
 Version specifiers:
