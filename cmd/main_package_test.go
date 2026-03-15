@@ -11,7 +11,7 @@ func TestUtils_CreatePackage_empty(t *testing.T) {
 		t.Errorf("Expected error, got <nil>")
 		return
 	}
-	if err.Error() != "invalid package: expected <owner>/<repo>[==<version>|~=<filter>], got " {
+	if err.Error() != "invalid package: expected <owner>/<repo>[==<version>|@<version>|~=<filter>], got " {
 		t.Errorf("Unexpected error: %s", err)
 	}
 }
@@ -22,7 +22,7 @@ func TestUtils_CreatePackage_oneEl(t *testing.T) {
 		t.Errorf("Expected error, got <nil>")
 		return
 	}
-	if err.Error() != "invalid package: expected <owner>/<repo>[==<version>|~=<filter>], got jsnjack" {
+	if err.Error() != "invalid package: expected <owner>/<repo>[==<version>|@<version>|~=<filter>], got jsnjack" {
 		t.Errorf("Unexpected error: %s", err)
 	}
 }
@@ -239,8 +239,64 @@ func TestUtils_CreatePackage_conflictOperators(t *testing.T) {
 		t.Errorf("Expected error for mixed operators, got nil")
 		return
 	}
-	if err.Error() != "cannot use both == and ~= operators" {
+	if err.Error() != "cannot combine version specifiers" {
 		t.Errorf("Unexpected error: %s", err)
+	}
+}
+
+func TestUtils_CreatePackage_conflictAtAndTilde(t *testing.T) {
+	_, err := CreatePackage("jsnjack/kazy-go@v1~=v2")
+	if err == nil {
+		t.Errorf("Expected error for mixed operators, got nil")
+		return
+	}
+	if err.Error() != "cannot combine version specifiers" {
+		t.Errorf("Unexpected error: %s", err)
+	}
+}
+
+func TestUtils_CreatePackage_conflictAtAndEquals(t *testing.T) {
+	_, err := CreatePackage("jsnjack/kazy-go==v1@v2")
+	if err == nil {
+		t.Errorf("Expected error for mixed operators, got nil")
+		return
+	}
+	if err.Error() != "cannot combine version specifiers" {
+		t.Errorf("Unexpected error: %s", err)
+	}
+}
+
+func TestUtils_CreatePackage_atVersion(t *testing.T) {
+	p, err := CreatePackage("lightpanda-io/browser@v0.2.6")
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+		return
+	}
+	if p.Owner != "lightpanda-io" {
+		t.Errorf("Expected lightpanda-io, got %s", p.Owner)
+	}
+	if p.Repo != "browser" {
+		t.Errorf("Expected browser, got %s", p.Repo)
+	}
+	if p.Version != "v0.2.6" {
+		t.Errorf("Expected v0.2.6, got %s", p.Version)
+	}
+}
+
+func TestUtils_CreatePackage_aliasAtVersion(t *testing.T) {
+	p, err := CreatePackage("grm@v0.50")
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+		return
+	}
+	if p.Owner != "jsnjack" {
+		t.Errorf("Expected jsnjack, got %s", p.Owner)
+	}
+	if p.Repo != "grm" {
+		t.Errorf("Expected grm, got %s", p.Repo)
+	}
+	if p.Version != "v0.50" {
+		t.Errorf("Expected v0.50, got %s", p.Version)
 	}
 }
 

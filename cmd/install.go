@@ -27,6 +27,7 @@ var installCmd = &cobra.Command{
 Version specifiers:
   <owner>/<repo>               install latest release
   <owner>/<repo>==<tag>        install exact version  (e.g. ==v1.2.0)
+  <owner>/<repo>@<tag>         install exact version  (e.g. @v1.2.0)
   <owner>/<repo>~=<filter>     install most recent release matching filter
 
 The ~= filter matches tag names by prefix. If the filter contains glob

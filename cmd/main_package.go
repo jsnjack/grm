@@ -60,17 +60,24 @@ func CreatePackage(text string) (*Package, error) {
 
 	// Extract version specifier.
 	// ~= is checked first because it contains = which is a subset of ==.
+	// @ is supported as an alias for == (e.g. owner/repo@v1.0.0).
 	packageName := text
 	if splitFilter := strings.SplitN(text, "~=", 2); len(splitFilter) == 2 {
 		p.VersionFilter = splitFilter[1]
 		packageName = splitFilter[0]
 		// Detect accidental use of both operators, e.g. owner/repo==v1~=v2
-		if strings.Contains(packageName, "==") {
-			return nil, fmt.Errorf("cannot use both == and ~= operators")
+		if strings.Contains(packageName, "==") || strings.Contains(packageName, "@") {
+			return nil, fmt.Errorf("cannot combine version specifiers")
 		}
 	} else if splitVersion := strings.SplitN(text, "==", 2); len(splitVersion) == 2 {
 		p.Version = splitVersion[1]
 		packageName = splitVersion[0]
+		if strings.Contains(packageName, "@") || strings.Contains(p.Version, "@") {
+			return nil, fmt.Errorf("cannot combine version specifiers")
+		}
+	} else if splitAt := strings.SplitN(text, "@", 2); len(splitAt) == 2 {
+		p.Version = splitAt[1]
+		packageName = splitAt[0]
 	}
 
 	// Check if it is one of the known aliases
@@ -85,7 +92,7 @@ func CreatePackage(text string) (*Package, error) {
 	// Extract owner
 	split := strings.Split(packageName, "/")
 	if len(split) != 2 {
-		return nil, fmt.Errorf("invalid package: expected <owner>/<repo>[==<version>|~=<filter>], got %s", packageName)
+		return nil, fmt.Errorf("invalid package: expected <owner>/<repo>[==<version>|@<version>|~=<filter>], got %s", packageName)
 	}
 	p.Owner = split[0]
 	p.Repo = split[1]
