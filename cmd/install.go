@@ -173,6 +173,10 @@ func selectAsset(assets []*github.ReleaseAsset, filter []string) (*github.Releas
 }
 
 func filterSuitableAssets(input []string, filters []string) []string {
+	return filterSuitableAssetsForPlatform(input, filters, runtime.GOOS, runtime.GOARCH)
+}
+
+func filterSuitableAssetsForPlatform(input []string, filters []string, goos, goarch string) []string {
 	filtered := input
 	if len(filters) != 0 {
 		for _, item := range filters {
@@ -180,24 +184,34 @@ func filterSuitableAssets(input []string, filters []string) []string {
 		}
 	}
 	// Filter by operating system
-	filtered = preferToContain(filtered, runtime.GOOS)
+	filtered = preferToContain(filtered, goos)
 	// Filter by architecture
-	filtered = preferToContain(filtered, runtime.GOARCH)
-	// Extra filters
-	if runtime.GOARCH == "amd64" {
+	filtered = preferToContain(filtered, goarch)
+	// Extra arch aliases
+	switch goarch {
+	case "amd64":
 		filtered = preferToContain(filtered, "64")
-		filtered = preferToContain(filtered, runtime.GOOS+"64")
+		filtered = preferToContain(filtered, goos+"64")
 		filtered = preferToContain(filtered, "x86_64")
 		filtered = preferToContain(filtered, "x64")
-	}
-	if runtime.GOARCH == "386" {
+	case "arm64":
+		// aarch64 is the common alias for arm64 used by many release pipelines
+		filtered = preferToContain(filtered, "aarch64")
+	case "386":
 		filtered = preferToContain(filtered, "32")
-		filtered = preferToContain(filtered, runtime.GOOS+"32")
+		filtered = preferToContain(filtered, goos+"32")
 	}
-	if runtime.GOOS == "darwin" {
+	// Extra OS aliases
+	switch goos {
+	case "darwin":
 		filtered = preferToContain(filtered, "mac")
 		filtered = preferToContain(filtered, "macos")
 		filtered = preferToContain(filtered, "darwin")
+		if goarch == "arm64" {
+			// Universal (fat) binaries work on both Intel and Apple Silicon;
+			// prefer them when no arm64/aarch64-specific asset exists.
+			filtered = preferToContain(filtered, "universal")
+		}
 	}
 	// Exclude system packages for package managers not available on this system
 	if _, err := exec.LookPath("dpkg"); err != nil {

@@ -456,6 +456,135 @@ func TestInstall_filterSuitableAssets_zsync_always_excluded(t *testing.T) {
 	}
 }
 
+// TestInstall_filterSuitableAssets_darwin_arm64_aarch64 checks that assets
+// labelled with the "aarch64" alias are preferred on darwin/arm64.
+func TestInstall_filterSuitableAssets_darwin_arm64_aarch64(t *testing.T) {
+	// Typical release layout used by tools like bat, fd, ripgrep
+	input := []string{
+		"tool-aarch64-apple-darwin.tar.gz",
+		"tool-x86_64-apple-darwin.tar.gz",
+		"tool-x86_64-unknown-linux-gnu.tar.gz",
+		"checksums.txt",
+	}
+	expected := []string{"tool-aarch64-apple-darwin.tar.gz"}
+	output := filterSuitableAssetsForPlatform(input, nil, "darwin", "arm64")
+	if len(output) != len(expected) {
+		t.Errorf("got %v, want %v", output, expected)
+		return
+	}
+	for _, item := range expected {
+		if !stringInSlice(item, output) {
+			t.Errorf("expected %s to be in output %v", item, output)
+		}
+	}
+}
+
+// TestInstall_filterSuitableAssets_darwin_arm64_explicit checks assets
+// labelled "darwin-arm64" (without the aarch64 alias).
+func TestInstall_filterSuitableAssets_darwin_arm64_explicit(t *testing.T) {
+	input := []string{
+		"tool-darwin-arm64.tar.gz",
+		"tool-darwin-amd64.tar.gz",
+		"tool-linux-amd64.tar.gz",
+	}
+	expected := []string{"tool-darwin-arm64.tar.gz"}
+	output := filterSuitableAssetsForPlatform(input, nil, "darwin", "arm64")
+	if len(output) != len(expected) {
+		t.Errorf("got %v, want %v", output, expected)
+		return
+	}
+	for _, item := range expected {
+		if !stringInSlice(item, output) {
+			t.Errorf("expected %s to be in output %v", item, output)
+		}
+	}
+}
+
+// TestInstall_filterSuitableAssets_darwin_arm64_universal checks that a
+// macOS universal binary is preferred on darwin/arm64 when no arm64/aarch64
+// specific asset is available.
+func TestInstall_filterSuitableAssets_darwin_arm64_universal(t *testing.T) {
+	input := []string{
+		"tool-darwin-amd64.tar.gz",
+		"tool-darwin-universal.tar.gz",
+		"tool-linux-amd64.tar.gz",
+	}
+	expected := []string{"tool-darwin-universal.tar.gz"}
+	output := filterSuitableAssetsForPlatform(input, nil, "darwin", "arm64")
+	if len(output) != len(expected) {
+		t.Errorf("got %v, want %v", output, expected)
+		return
+	}
+	for _, item := range expected {
+		if !stringInSlice(item, output) {
+			t.Errorf("expected %s to be in output %v", item, output)
+		}
+	}
+}
+
+// TestInstall_filterSuitableAssets_darwin_arm64_prefers_native_over_universal
+// checks that a native arm64 asset is selected over a universal binary when both exist.
+func TestInstall_filterSuitableAssets_darwin_arm64_prefers_native_over_universal(t *testing.T) {
+	input := []string{
+		"tool-darwin-arm64.tar.gz",
+		"tool-darwin-universal.tar.gz",
+		"tool-darwin-amd64.tar.gz",
+		"tool-linux-amd64.tar.gz",
+	}
+	expected := []string{"tool-darwin-arm64.tar.gz"}
+	output := filterSuitableAssetsForPlatform(input, nil, "darwin", "arm64")
+	if len(output) != len(expected) {
+		t.Errorf("got %v, want %v", output, expected)
+		return
+	}
+	for _, item := range expected {
+		if !stringInSlice(item, output) {
+			t.Errorf("expected %s to be in output %v", item, output)
+		}
+	}
+}
+
+// TestInstall_filterSuitableAssets_darwin_amd64 checks that Intel darwin assets
+// are still selected correctly after the refactor.
+func TestInstall_filterSuitableAssets_darwin_amd64(t *testing.T) {
+	input := []string{
+		"tool-aarch64-apple-darwin.tar.gz",
+		"tool-x86_64-apple-darwin.tar.gz",
+		"tool-x86_64-unknown-linux-gnu.tar.gz",
+	}
+	expected := []string{"tool-x86_64-apple-darwin.tar.gz"}
+	output := filterSuitableAssetsForPlatform(input, nil, "darwin", "amd64")
+	if len(output) != len(expected) {
+		t.Errorf("got %v, want %v", output, expected)
+		return
+	}
+	for _, item := range expected {
+		if !stringInSlice(item, output) {
+			t.Errorf("expected %s to be in output %v", item, output)
+		}
+	}
+}
+
+// TestInstall_filterSuitableAssets_linux_arm64_aarch64 checks aarch64 alias on Linux.
+func TestInstall_filterSuitableAssets_linux_arm64_aarch64(t *testing.T) {
+	input := []string{
+		"tool-linux-aarch64.tar.gz",
+		"tool-linux-x86_64.tar.gz",
+		"tool-darwin-arm64.tar.gz",
+	}
+	expected := []string{"tool-linux-aarch64.tar.gz"}
+	output := filterSuitableAssetsForPlatform(input, nil, "linux", "arm64")
+	if len(output) != len(expected) {
+		t.Errorf("got %v, want %v", output, expected)
+		return
+	}
+	for _, item := range expected {
+		if !stringInSlice(item, output) {
+			t.Errorf("expected %s to be in output %v", item, output)
+		}
+	}
+}
+
 func stringInSlice(a string, list []string) bool {
 	for _, b := range list {
 		if b == a {
