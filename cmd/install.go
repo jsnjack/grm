@@ -185,28 +185,26 @@ func filterSuitableAssetsForPlatform(input []string, filters []string, goos, goa
 	}
 	// Filter by operating system
 	filtered = preferToContain(filtered, goos)
-	// Filter by architecture
-	filtered = preferToContain(filtered, goarch)
-	// Extra arch aliases
+	// Filter by architecture. For well-known arch pairs (amd64/x86_64,
+	// arm64/aarch64), match any equivalent name at once so that e.g. an
+	// "amd64" .deb does not shadow an "x86_64" .rpm.
 	switch goarch {
 	case "amd64":
+		filtered = preferToContainAny(filtered, "amd64", "x86_64")
 		filtered = preferToContain(filtered, "64")
 		filtered = preferToContain(filtered, goos+"64")
-		filtered = preferToContain(filtered, "x86_64")
 		filtered = preferToContain(filtered, "x64")
 	case "arm64":
-		// aarch64 is the common alias for arm64 used by many release pipelines
-		filtered = preferToContain(filtered, "aarch64")
+		filtered = preferToContainAny(filtered, "arm64", "aarch64")
 	case "386":
-		filtered = preferToContain(filtered, "32")
-		filtered = preferToContain(filtered, goos+"32")
+		filtered = preferToContainAny(filtered, "386", "32", goos+"32")
+	default:
+		filtered = preferToContain(filtered, goarch)
 	}
 	// Extra OS aliases
 	switch goos {
 	case "darwin":
-		filtered = preferToContain(filtered, "mac")
-		filtered = preferToContain(filtered, "macos")
-		filtered = preferToContain(filtered, "darwin")
+		filtered = preferToContainAny(filtered, "mac", "macos", "darwin")
 		if goarch == "arm64" {
 			// Universal (fat) binaries work on both Intel and Apple Silicon;
 			// prefer them when no arm64/aarch64-specific asset exists.
@@ -257,6 +255,25 @@ func preferToContain(list []string, filter string) []string {
 	// Return full list if everything was filtered out
 	if len(filtered) == 0 {
 		filtered = list
+	}
+	return filtered
+}
+
+// preferToContainAny returns items that contain any of the given filters.
+// If no items match any filter, returns the original list.
+func preferToContainAny(list []string, filters ...string) []string {
+	filtered := []string{}
+	for _, item := range list {
+		litem := strings.ToLower(item)
+		for _, filter := range filters {
+			if filter != "" && strings.Contains(litem, filter) {
+				filtered = append(filtered, item)
+				break
+			}
+		}
+	}
+	if len(filtered) == 0 {
+		return list
 	}
 	return filtered
 }

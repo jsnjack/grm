@@ -585,6 +585,48 @@ func TestInstall_filterSuitableAssets_linux_arm64_aarch64(t *testing.T) {
 	}
 }
 
+// TestInstall_filterSuitableAssets_linux_amd64_rpm_vs_deb checks that on a
+// linux/amd64 system the x86_64.rpm is not shadowed by the amd64.deb when
+// both naming conventions are present.
+func TestInstall_filterSuitableAssets_linux_amd64_rpm_vs_deb(t *testing.T) {
+	input := []string{
+		"CHECKSUMS.sha256.asc",
+		"RELEASES",
+		"youtube-music-desktop-app-2.0.11-1.arm64.rpm",
+		"youtube-music-desktop-app-2.0.11-1.x86_64.rpm",
+		"youtube-music-desktop-app_2.0.11_amd64.deb",
+		"youtube-music-desktop-app_2.0.11_arm64.deb",
+		"YouTube.Music.Desktop.App-2.0.11.Setup.exe",
+		"YouTube.Music.Desktop.App-darwin-arm64-2.0.11.zip",
+		"YouTube.Music.Desktop.App-darwin-x64-2.0.11.zip",
+		"youtube_music_desktop_app-2.0.11-full.nupkg",
+	}
+	output := filterSuitableAssetsForPlatform(input, nil, "linux", "amd64")
+	// The x86_64 rpm must always survive arch filtering
+	if !stringInSlice("youtube-music-desktop-app-2.0.11-1.x86_64.rpm", output) {
+		t.Errorf("expected x86_64.rpm in output %v", output)
+	}
+	// The amd64 deb should survive only if dpkg is available
+	if _, err := exec.LookPath("dpkg"); err == nil {
+		if !stringInSlice("youtube-music-desktop-app_2.0.11_amd64.deb", output) {
+			t.Errorf("dpkg available: expected amd64.deb in output %v", output)
+		}
+	} else {
+		if stringInSlice("youtube-music-desktop-app_2.0.11_amd64.deb", output) {
+			t.Errorf("dpkg not available: did not expect amd64.deb in output %v", output)
+		}
+	}
+	// arm64 variants should be excluded
+	for _, reject := range []string{
+		"youtube-music-desktop-app-2.0.11-1.arm64.rpm",
+		"youtube-music-desktop-app_2.0.11_arm64.deb",
+	} {
+		if stringInSlice(reject, output) {
+			t.Errorf("did not expect %s in output %v", reject, output)
+		}
+	}
+}
+
 func stringInSlice(a string, list []string) bool {
 	for _, b := range list {
 		if b == a {
