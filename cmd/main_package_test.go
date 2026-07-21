@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -114,6 +115,32 @@ func TestUtils_CreatePackage_alias(t *testing.T) {
 	}
 }
 
+func TestPackage_GetFullName(t *testing.T) {
+	p := Package{Owner: "jsnjack", Repo: "grm"}
+	if got := p.GetFullName(); got != "jsnjack/grm" {
+		t.Errorf("got %s, want jsnjack/grm", got)
+	}
+}
+
+func TestPackage_GetVerboseLocked(t *testing.T) {
+	cases := []struct {
+		name   string
+		locked bool
+		want   string
+	}{
+		{"locked", true, "yes"},
+		{"unlocked", false, ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			p := Package{Locked: c.locked}
+			if got := p.GetVerboseLocked(); got != c.want {
+				t.Errorf("got %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
 func TestPackage_IsSystemPackage_false_when_no_name(t *testing.T) {
 	p := Package{Filename: "/usr/local/bin/tool"}
 	if p.IsSystemPackage() {
@@ -155,31 +182,28 @@ func TestPackage_VerifyVersion_system_package_mismatch(t *testing.T) {
 
 func TestPackage_VerifyVersion_binary_match(t *testing.T) {
 	// Create a temp file to simulate an installed binary
-	f, err := os.CreateTemp("", "grm-test-*")
-	if err != nil {
+	filename := filepath.Join(t.TempDir(), "grm-test")
+	if err := os.WriteFile(filename, []byte("binary content"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(f.Name())
-	f.WriteString("binary content")
-	f.Close()
 
-	hash, _ := tomd5(f.Name())
-	p := Package{Version: "v1.0.0", Filename: f.Name(), MD5: hash}
+	hash, err := tomd5(filename)
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	p := Package{Version: "v1.0.0", Filename: filename, MD5: hash}
 	if err := p.VerifyVersion("v1.0.0"); err != nil {
 		t.Errorf("Expected nil for matching version and hash, got: %s", err)
 	}
 }
 
 func TestPackage_VerifyVersion_binary_hash_mismatch(t *testing.T) {
-	f, err := os.CreateTemp("", "grm-test-*")
-	if err != nil {
+	filename := filepath.Join(t.TempDir(), "grm-test")
+	if err := os.WriteFile(filename, []byte("binary content"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(f.Name())
-	f.WriteString("binary content")
-	f.Close()
 
-	p := Package{Version: "v1.0.0", Filename: f.Name(), MD5: "wronghash"}
+	p := Package{Version: "v1.0.0", Filename: filename, MD5: "wronghash"}
 	if err := p.VerifyVersion("v1.0.0"); err == nil {
 		t.Errorf("Expected error on hash mismatch, got nil")
 	}

@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,7 +18,7 @@ func Install(asset *github.ReleaseAsset, pkg *Package) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	logf("Installing %s...\n", filename)
+	slog.Debug("installing", "path", filename)
 
 	// Route system packages by extension before MIME detection
 	ext := strings.ToLower(filepath.Ext(filename))
@@ -26,15 +28,15 @@ func Install(asset *github.ReleaseAsset, pkg *Package) (string, error) {
 
 	file, err := os.Open(filename)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("open %s: %w", filename, err)
 	}
-	defer file.Close()
+	defer logClose(file)
 
 	ct, err := getFileType(file)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("detect file type of %s: %w", filename, err)
 	}
-	logf("File type %s\n", ct)
+	slog.Debug("detected file type", "type", ct)
 
 	if isExecutableFileType(ct) {
 		return installBinary(filename, pkg.RenameBinaryTo)
@@ -45,7 +47,7 @@ func Install(asset *github.ReleaseAsset, pkg *Package) (string, error) {
 func getFileType(out io.Reader) (string, error) {
 	kind, err := mimetype.DetectReader(out)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("detect mime type: %w", err)
 	}
 	return kind.String(), nil
 }

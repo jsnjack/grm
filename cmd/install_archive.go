@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,26 +11,25 @@ import (
 )
 
 func installArchive(filename string, renameBinaryTo string) (string, error) {
-	logln("Installing from an archive")
+	slog.Debug("installing from an archive")
 	tmpDir := getTmpDir(filename)
 	msgStep("Unpacking archive %s", bold(strings.TrimPrefix(filename, tmpDir)))
 	err := archiver.Unarchive(filename, tmpDir)
 	if err != nil {
 		// Check if maybe it is a compressed file
 		dest := filepath.Join(tmpDir, strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename)))
-		err = archiver.DecompressFile(filename, dest)
-		if err != nil {
-			return "", err
+		if err := archiver.DecompressFile(filename, dest); err != nil {
+			return "", fmt.Errorf("unpack %s: %w", filename, err)
 		}
-		logf("Decompressed to %s\n", dest)
+		slog.Debug("decompressed", "path", dest)
 	} else {
-		logf("Unpacked to %s\n", tmpDir)
+		slog.Debug("unpacked", "path", tmpDir)
 	}
 
 	msgStep("Looking for a binary file...")
 	filenameA, err := findBinaryFile(tmpDir)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("find binary in %s: %w", tmpDir, err)
 	}
 	return installBinary(filenameA, renameBinaryTo)
 }
@@ -53,8 +53,9 @@ func findBinaryFile(tmpDir string) (string, error) {
 		}
 		f, err := os.Open(path)
 		if err != nil {
-			return err
+			return fmt.Errorf("open %s: %w", path, err)
 		}
+		defer logClose(f)
 		ct, err := getFileType(f)
 		if err != nil {
 			ct = "unknown"
@@ -68,7 +69,7 @@ func findBinaryFile(tmpDir string) (string, error) {
 		return nil
 	})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("walk %s: %w", tmpDir, err)
 	}
 
 	// Find max filename width for alignment

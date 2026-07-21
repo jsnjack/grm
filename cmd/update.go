@@ -146,7 +146,11 @@ var updateCmd = &cobra.Command{
 		// Phase 3: single confirmation
 		fmt.Println()
 		msgUpdate("%d package(s) can be updated", len(toUpdate))
-		if !askForConfirmation("Proceed with update?") {
+		ok, err := askForConfirmation("Proceed with update?")
+		if err != nil {
+			return err
+		}
+		if !ok {
 			return nil
 		}
 

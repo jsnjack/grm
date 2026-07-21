@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os/exec"
 	"path"
 	"runtime"
@@ -114,7 +115,9 @@ Examples:
 			if installLock {
 				pkg.Locked = true
 			}
-			config.PutPackage(pkg)
+			if err := config.PutPackage(pkg); err != nil {
+				return err
+			}
 		}
 		return nil
 	},
@@ -159,7 +162,11 @@ func selectAsset(assets []*github.ReleaseAsset, filter []string) (*github.Releas
 	case 1:
 		selected = filtered[0]
 	default:
-		selected = filtered[askForNumber("Select suitable asset:", len(filtered))-1]
+		idx, err := askForNumber("Select suitable asset:", len(filtered))
+		if err != nil {
+			return nil, err
+		}
+		selected = filtered[idx-1]
 	}
 
 	msgOK("Selected asset %s", bold(selected))
@@ -213,16 +220,16 @@ func filterSuitableAssetsForPlatform(input []string, filters []string, goos, goa
 	}
 	// Exclude system packages for package managers not available on this system
 	if _, err := exec.LookPath("dpkg"); err != nil {
-		logln("dpkg not found, excluding .deb assets")
+		slog.Debug("dpkg not found, excluding .deb assets")
 		filtered = exludeExtensions(filtered, ".deb")
 	} else {
-		logln("dpkg found, keeping .deb assets")
+		slog.Debug("dpkg found, keeping .deb assets")
 	}
 	if _, err := exec.LookPath("rpm"); err != nil {
-		logln("rpm not found, excluding .rpm assets")
+		slog.Debug("rpm not found, excluding .rpm assets")
 		filtered = exludeExtensions(filtered, ".rpm")
 	} else {
-		logln("rpm found, keeping .rpm assets")
+		slog.Debug("rpm found, keeping .rpm assets")
 	}
 	// AppImage is not supported
 	filtered = hardExcludeExtension(filtered, ".AppImage")
@@ -322,16 +329,25 @@ func matchVersionFilter(filter, tagName string) (bool, error) {
 }
 
 func selectRelease(pkg *Package) (*github.RepositoryRelease, error) {
-	client := CreateClient()
+	client, err := CreateClient()
+	if err != nil {
+		return nil, err
+	}
 	if pkg.Version == "" && pkg.VersionFilter == "" {
 		// Get latest release
 		release, _, err := client.Repositories.GetLatestRelease(context.Background(), pkg.Owner, pkg.Repo)
-		return release, err
+		if err != nil {
+			return nil, fmt.Errorf("get latest release for %s: %w", pkg.GetFullName(), err)
+		}
+		return release, nil
 	}
 	if pkg.Version != "" {
 		// Get specific release by exact tag
 		release, _, err := client.Repositories.GetReleaseByTag(context.Background(), pkg.Owner, pkg.Repo, pkg.Version)
-		return release, err
+		if err != nil {
+			return nil, fmt.Errorf("get release %s for %s: %w", pkg.Version, pkg.GetFullName(), err)
+		}
+		return release, nil
 	}
 	// Find the most recent release whose tag matches the version filter.
 	// ListReleases returns releases in reverse-chronological order.
@@ -339,7 +355,7 @@ func selectRelease(pkg *Package) (*github.RepositoryRelease, error) {
 	for {
 		releases, resp, err := client.Repositories.ListReleases(context.Background(), pkg.Owner, pkg.Repo, opt)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("list releases for %s: %w", pkg.GetFullName(), err)
 		}
 		for _, release := range releases {
 			matched, err := matchVersionFilter(pkg.VersionFilter, release.GetTagName())

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 )
 
@@ -44,7 +45,10 @@ func (p *Package) VerifyVersion(version string) error {
 		return fmt.Errorf("installed version %s, want %s", p.Version, version)
 	}
 	if p.Filename != "" {
-		hash, _ := tomd5(p.Filename)
+		hash, err := tomd5(p.Filename)
+		if err != nil {
+			return fmt.Errorf("verify %s: %w", p.Filename, err)
+		}
 		if p.MD5 != hash {
 			return fmt.Errorf("installed file hash %s, want %s", p.MD5, hash)
 		}
@@ -83,9 +87,7 @@ func CreatePackage(text string) (*Package, error) {
 	// Check if it is one of the known aliases
 	alias, ok := KnownAliases[packageName]
 	if ok {
-		if rootVerbose {
-			fmt.Printf("Found alias for '%s': %s\n", text, alias)
-		}
+		slog.Debug("resolved alias", "input", text, "alias", alias)
 		packageName = alias
 	}
 

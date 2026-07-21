@@ -5,7 +5,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"math/rand"
 	"net/http"
 	"os"
@@ -28,29 +28,32 @@ const DefaultBinDir = "/usr/local/bin/"
 const DefaultTmpDirPattern = "/tmp/grm."
 
 func downloadFile(asset *github.ReleaseAsset, pkg *Package) (string, error) {
-	client := CreateClient()
-	reader, _, err := client.Repositories.DownloadReleaseAsset(context.Background(), pkg.Owner, pkg.Repo, asset.GetID(), http.DefaultClient)
+	client, err := CreateClient()
 	if err != nil {
 		return "", err
 	}
-	defer reader.Close()
+	reader, _, err := client.Repositories.DownloadReleaseAsset(context.Background(), pkg.Owner, pkg.Repo, asset.GetID(), http.DefaultClient)
+	if err != nil {
+		return "", fmt.Errorf("download release asset %s: %w", asset.GetName(), err)
+	}
+	defer logClose(reader)
 
 	// Create a directory
 	path := fmt.Sprintf(DefaultTmpDirPattern+"%s/", generateRandomString(6))
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		err = os.Mkdir(path, os.ModePerm)
-		if err != nil {
-			return "", err
+		if err := os.Mkdir(path, os.ModePerm); err != nil {
+			return "", fmt.Errorf("create temp directory %s: %w", path, err)
 		}
 	}
 
+	destination := path + asset.GetName()
 	var out io.Writer
-	f, err := os.OpenFile(path+asset.GetName(), os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(destination, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("create %s: %w", destination, err)
 	}
 	out = f
-	defer f.Close()
+	defer logClose(f)
 
 	if isTTY && !rootNoProgress {
 		bar := progressbar.NewOptions(
@@ -59,14 +62,13 @@ func downloadFile(asset *github.ReleaseAsset, pkg *Package) (string, error) {
 		)
 		out = io.MultiWriter(out, bar)
 	}
-	_, err = io.Copy(out, reader)
-	if err != nil {
-		return "", err
+	if _, err := io.Copy(out, reader); err != nil {
+		return "", fmt.Errorf("write %s: %w", destination, err)
 	}
 	if isTTY && !rootNoProgress {
 		fmt.Println()
 	}
-	return path + asset.GetName(), nil
+	return destination, nil
 }
 
 func sudo() string {
@@ -78,7 +80,7 @@ func sudo() string {
 }
 
 func installBinary(filename string, renameBinaryTo string) (string, error) {
-	logln("Installing as a binary")
+	slog.Debug("installing as a binary")
 	tmpDir := getTmpDir(filename)
 
 	installedBinaryName := renameBinaryTo
@@ -89,24 +91,24 @@ func installBinary(filename string, renameBinaryTo string) (string, error) {
 
 	msgStep("Installing %s %s %s", bold(strings.TrimPrefix(filename, tmpDir)), cyan(sArrow), bold(installedFile))
 
-	err := removeBinary(installedFile)
-	if err != nil {
+	if err := removeBinary(installedFile); err != nil {
 		return "", err
 	}
 	cmdCp := exec.Command("/bin/sh", "-c", fmt.Sprintf("%scp %s %s", sudo(), filename, installedFile))
-	err = cmdCp.Run()
-	if err != nil {
-		return "", err
+	if err := cmdCp.Run(); err != nil {
+		return "", fmt.Errorf("copy %s to %s: %w", filename, installedFile, err)
 	}
-	cmd := exec.Command("/bin/sh", "-c", sudo()+"chmod 755 "+installedFile)
-	err = cmd.Run()
+	cmdChmod := exec.Command("/bin/sh", "-c", sudo()+"chmod 755 "+installedFile)
+	err := cmdChmod.Run()
+	if err != nil {
+		err = fmt.Errorf("chmod %s: %w", installedFile, err)
+	}
 
 	if strings.HasPrefix(tmpDir, DefaultTmpDirPattern) {
-		logf("Removing %s...\n", tmpDir)
+		slog.Debug("removing temp dir", "path", tmpDir)
 		cmdRm := exec.Command("/bin/sh", "-c", fmt.Sprintf("rm -rf %s", tmpDir))
-		err := cmdRm.Run()
-		if err != nil {
-			logln(err)
+		if rmErr := cmdRm.Run(); rmErr != nil {
+			slog.Log(context.Background(), LevelTrace, "remove temp dir", "path", tmpDir, "err", rmErr)
 		}
 	}
 	return installedFile, err
@@ -114,8 +116,10 @@ func installBinary(filename string, renameBinaryTo string) (string, error) {
 
 func removeBinary(filename string) error {
 	cmdRm := exec.Command("/bin/sh", "-c", fmt.Sprintf("%srm -f %s", sudo(), filename))
-	err := cmdRm.Run()
-	return err
+	if err := cmdRm.Run(); err != nil {
+		return fmt.Errorf("remove %s: %w", filename, err)
+	}
+	return nil
 }
 
 func getTmpDir(path string) string {
@@ -154,15 +158,16 @@ func generateRandomString(n int) string {
 	return string(b)
 }
 
-func askForNumber(msg string, to int) int {
+// askForNumber prompts for a number between 1 and to (inclusive). If --yes
+// was passed, it returns 1 without prompting.
+func askForNumber(msg string, to int) (int, error) {
 	if rootYes {
-		return 1
+		return 1, nil
 	}
 	fmt.Printf("%s %s ", msg, dim(fmt.Sprintf("[1-%d]", to)))
 	var response string
-	_, err := fmt.Scanln(&response)
-	if err != nil {
-		log.Fatal(err)
+	if _, err := fmt.Scanln(&response); err != nil {
+		return 0, fmt.Errorf("read response: %w", err)
 	}
 	responseInt, err := strconv.Atoi(response)
 	if err != nil {
@@ -173,29 +178,29 @@ func askForNumber(msg string, to int) int {
 		fmt.Println("  Out of range")
 		return askForNumber(msg, to)
 	}
-	return responseInt
+	return responseInt, nil
 }
 
-func askForConfirmation(msg string) bool {
+// askForConfirmation prompts for a yes/no answer. If --yes was passed, it
+// returns true without prompting.
+func askForConfirmation(msg string) (bool, error) {
 	if rootYes {
-		return true
+		return true, nil
 	}
 	fmt.Print(msg + " " + dim("[y/n]") + " ")
 	var response string
-	_, err := fmt.Scanln(&response)
-	if err != nil {
-		log.Fatal(err)
+	if _, err := fmt.Scanln(&response); err != nil {
+		return false, fmt.Errorf("read response: %w", err)
 	}
 	okayResponses := []string{"y", "Y", "yes", "Yes", "YES"}
 	nokayResponses := []string{"n", "N", "no", "No", "NO"}
 	if containsString(okayResponses, response) {
-		return true
+		return true, nil
 	} else if containsString(nokayResponses, response) {
-		return false
-	} else {
-		fmt.Println("  Please type yes or no and then press enter:")
-		return askForConfirmation(msg)
+		return false, nil
 	}
+	fmt.Println("  Please type yes or no and then press enter:")
+	return askForConfirmation(msg)
 }
 
 // posString returns the first index of element in slice.
@@ -211,7 +216,7 @@ func posString(slice []string, element string) int {
 
 // containsString returns true iff slice contains element
 func containsString(slice []string, element string) bool {
-	return !(posString(slice, element) == -1)
+	return posString(slice, element) != -1
 }
 
 // ProgressReader is a reader that prints progress
@@ -222,43 +227,43 @@ type ProgressReader struct {
 
 func (pr *ProgressReader) Read(p []byte) (int, error) {
 	n, err := pr.r.Read(p)
-	pr.bar.Add(n)
+	if addErr := pr.bar.Add(n); addErr != nil {
+		slog.Log(context.Background(), LevelTrace, "update progress bar", "err", addErr)
+	}
 	return n, err
 }
 
 // CreateClient creates github client instance. It will try to use GITHUB_TOKEN
 // environment variable to create authenticated client (no rate limits)
-func CreateClient() *github.Client {
+func CreateClient() (*github.Client, error) {
 	// First check if the token was provided as a flag
 	token := rootToken
 	if token != "" {
-		logf("Token from flag: %s\n", token)
+		slog.Debug("using token from flag")
 	}
 	if token == "" {
 		// See if it is set in configuration
 		config, err := ReadConfig(ConfigFile)
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			return nil, err
 		}
 		token = config.Settings["token"]
 		if token != "" {
-			logf("Token from config: %s\n", token)
+			slog.Debug("using token from config")
 		}
 	}
 	if token == "" {
 		// Try to get it from environments
 		token = os.Getenv("GITHUB_TOKEN")
 		if token != "" {
-			logf("Token from env: %s\n", token)
+			slog.Debug("using token from env")
 		}
 	}
 	if token == "" {
 		// Give up, use anonymous session
-		logln("Using anonymous client")
-		return github.NewClient(nil)
+		slog.Debug("using anonymous client")
+		return github.NewClient(nil), nil
 	}
-	logf("Using client with token: %s\n", token)
 
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(
@@ -266,31 +271,26 @@ func CreateClient() *github.Client {
 	)
 	tc := oauth2.NewClient(ctx, ts)
 
-	return github.NewClient(tc)
+	return github.NewClient(tc), nil
 }
 
 func tomd5(filePath string) (string, error) {
-	var md5Value string
 	file, err := os.Open(filePath)
 	if err != nil {
-		return md5Value, err
+		return "", fmt.Errorf("open %s: %w", filePath, err)
 	}
-	defer file.Close()
+	defer logClose(file)
 	h := md5.New()
 	if _, err := io.Copy(h, file); err != nil {
-		return md5Value, err
+		return "", fmt.Errorf("hash %s: %w", filePath, err)
 	}
 	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
 
-func logf(format string, a ...interface{}) {
-	if rootVerbose {
-		fmt.Printf(format, a...)
-	}
-}
-
-func logln(a ...interface{}) {
-	if rootVerbose {
-		fmt.Println(a...)
+// logClose closes c and logs any error at trace level. Deferred close
+// errors are rarely actionable, so they don't propagate as return values.
+func logClose(c io.Closer) {
+	if err := c.Close(); err != nil {
+		slog.Log(context.Background(), LevelTrace, "close", "err", err)
 	}
 }

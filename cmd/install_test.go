@@ -3,13 +3,41 @@ package cmd
 import (
 	"os/exec"
 	"testing"
+
+	"github.com/google/go-github/v32/github"
 )
+
+func TestSelectAsset_none_suitable(t *testing.T) {
+	assets := []*github.ReleaseAsset{
+		{Name: github.String("app-x86_64.AppImage")},
+	}
+	_, err := selectAsset(assets, nil)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if err.Error() != "supported asset not found" {
+		t.Errorf("unexpected error: %s", err)
+	}
+}
+
+func TestSelectAsset_single_suitable(t *testing.T) {
+	assets := []*github.ReleaseAsset{
+		{Name: github.String("tool-linux-amd64.tar.gz")},
+	}
+	got, err := selectAsset(assets, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	if got.GetName() != "tool-linux-amd64.tar.gz" {
+		t.Errorf("got %s, want tool-linux-amd64.tar.gz", got.GetName())
+	}
+}
 
 func TestMatchVersionFilter_prefix(t *testing.T) {
 	cases := []struct {
-		filter  string
-		tag     string
-		want    bool
+		filter string
+		tag    string
+		want   bool
 	}{
 		{"v146", "v146.0.7680.72", true},
 		{"v146", "v146", true},

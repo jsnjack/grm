@@ -29,12 +29,15 @@ var infoCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		client := CreateClient()
+		client, err := CreateClient()
+		if err != nil {
+			return err
+		}
 		if infoAll {
 			opt := &github.ListOptions{}
 			releases, _, err := client.Repositories.ListReleases(context.Background(), pkg.Owner, pkg.Repo, opt)
 			if err != nil {
-				return err
+				return fmt.Errorf("list releases for %s: %w", pkg.GetFullName(), err)
 			}
 			tableHeader([]int{15, 15, 15}, []string{"Version", "Published", "Downloads", "URL"})
 			for _, item := range releases {

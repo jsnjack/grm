@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"mime"
 	"os"
 	"path/filepath"
@@ -42,7 +43,10 @@ var releaseCmd = &cobra.Command{
 			return err
 		}
 
-		client := CreateClient()
+		client, err := CreateClient()
+		if err != nil {
+			return err
+		}
 
 		// Try to get existing release
 		release, _, err := client.Repositories.GetReleaseByTag(context.Background(), pkg.Owner, pkg.Repo, releaseTag)
@@ -54,7 +58,7 @@ var releaseCmd = &cobra.Command{
 		}
 
 		if err != nil {
-			return err
+			return fmt.Errorf("get or create release %s for %s: %w", releaseTag, pkg.GetFullName(), err)
 		}
 
 		// Upload assets
@@ -62,13 +66,13 @@ var releaseCmd = &cobra.Command{
 			msgSync("Uploading %s", bold(item))
 			f, err := os.Open(item)
 			if err != nil {
-				return err
+				return fmt.Errorf("open %s: %w", item, err)
 			}
-			defer f.Close()
+			defer logClose(f)
 
 			stat, err := f.Stat()
 			if err != nil {
-				return err
+				return fmt.Errorf("stat %s: %w", item, err)
 			}
 
 			if stat.IsDir() {
@@ -84,7 +88,11 @@ var releaseCmd = &cobra.Command{
 				r:   f,
 				bar: bar,
 			}
-			defer bar.Clear()
+			defer func() {
+				if err := bar.Clear(); err != nil {
+					slog.Log(context.Background(), LevelTrace, "clear progress bar", "err", err)
+				}
+			}()
 
 			u := fmt.Sprintf("repos/%s/%s/releases/%d/assets?name=%s", pkg.Owner, pkg.Repo, release.GetID(), filepath.Base(item))
 
@@ -92,13 +100,12 @@ var releaseCmd = &cobra.Command{
 
 			req, err := client.NewUploadRequest(u, reader, stat.Size(), mediaType)
 			if err != nil {
-				return err
+				return fmt.Errorf("build upload request for %s: %w", item, err)
 			}
 
 			asset := new(github.ReleaseAsset)
-			_, err = client.Do(context.Background(), req, asset)
-			if err != nil {
-				return err
+			if _, err := client.Do(context.Background(), req, asset); err != nil {
+				return fmt.Errorf("upload %s: %w", item, err)
 			}
 			msgOK("Uploaded")
 		}
@@ -110,9 +117,9 @@ var releaseCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(releaseCmd)
 	releaseCmd.Flags().StringArrayVarP(&releaseFilename, "filename", "f", releaseFilename, "Location of an asset to upload")
-	releaseCmd.MarkFlagFilename("filename")
-	releaseCmd.MarkFlagRequired("filename")
+	cobra.CheckErr(releaseCmd.MarkFlagFilename("filename"))
+	cobra.CheckErr(releaseCmd.MarkFlagRequired("filename"))
 
 	releaseCmd.Flags().StringVarP(&releaseTag, "tag", "t", "", "Tag name")
-	releaseCmd.MarkFlagRequired("tag")
+	cobra.CheckErr(releaseCmd.MarkFlagRequired("tag"))
 }

@@ -35,10 +35,14 @@ Available Commands:
   version     Print version
 
 Flags:
-  -h, --help           help for grm
-      --token string   GitHub API token
-  -v, --verbose        Enable verbose logging
-  -y, --yes            Confirm all
+  -c, --config string   Path to the config file (default ~/.config/grm/grm.yaml)
+  -d, --debug           Debug-level logging on stderr.
+  -h, --help            help for grm
+      --no-progress     Disable progress bar
+      --token string    GitHub API token
+      --trace           Trace-level logs to /tmp/grm.log (truncated each run).
+      --version         Print the version and exit
+  -y, --yes             Confirm all
 
 Use "grm [command] --help" for more information about a command.
 ```

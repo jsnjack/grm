@@ -40,7 +40,11 @@ var removeCmd = &cobra.Command{
 				msgLocked("%s is %s", bold(pkg.GetFullName()), yellow("locked"))
 				continue
 			}
-			if ok := askForConfirmation(fmt.Sprintf("Are you sure you want to remove %s?", bold(item))); !ok {
+			ok, err := askForConfirmation(fmt.Sprintf("Are you sure you want to remove %s?", bold(item)))
+			if err != nil {
+				return err
+			}
+			if !ok {
 				return nil
 			}
 			if pkg.IsSystemPackage() {
@@ -54,8 +58,7 @@ var removeCmd = &cobra.Command{
 			// Clean db
 			delete(config.Packages, item)
 		}
-		config.save()
-		return nil
+		return config.save()
 	},
 }
 

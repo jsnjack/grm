@@ -6,8 +6,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Version is the version of the application calculated with monova
-var Version string
+// Version is set at build time via ldflags; defaults to "dev".
+var Version = "dev"
 
 // versionCmd represents the version command
 var versionCmd = &cobra.Command{

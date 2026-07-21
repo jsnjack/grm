@@ -124,7 +124,7 @@ func tableHeader(widths []int, names []string) {
 	total := 0
 	for i, name := range names {
 		if i < len(widths) {
-			b.WriteString(fmt.Sprintf("%-*s ", widths[i], name))
+			fmt.Fprintf(&b, "%-*s ", widths[i], name)
 			total += widths[i] + 1
 		} else {
 			b.WriteString(name)
@@ -143,12 +143,6 @@ func tableRow(cols ...string) {
 // ---------------------------------------------------------------------------
 // Terminal control (for update animation)
 // ---------------------------------------------------------------------------
-
-func clearLine() {
-	if isTTY {
-		fmt.Print("\033[2K\r")
-	}
-}
 
 func cursorUp(n int) {
 	if isTTY {

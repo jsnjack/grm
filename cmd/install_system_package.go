@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -41,14 +43,16 @@ func installSystemPackage(filename string, pkg *Package) (string, error) {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return "", err
+		return "", fmt.Errorf("install %s: %w", filename, err)
 	}
 
 	// Clean up tmp dir
 	tmpDir := getTmpDir(filename)
 	if strings.HasPrefix(tmpDir, DefaultTmpDirPattern) {
-		logf("Removing %s...\n", tmpDir)
-		exec.Command("/bin/sh", "-c", fmt.Sprintf("rm -rf %s", tmpDir)).Run()
+		slog.Debug("removing temp dir", "path", tmpDir)
+		if err := exec.Command("/bin/sh", "-c", fmt.Sprintf("rm -rf %s", tmpDir)).Run(); err != nil {
+			slog.Log(context.Background(), LevelTrace, "remove temp dir", "path", tmpDir, "err", err)
+		}
 	}
 
 	// No file to track — version tag + SystemPkgName are sufficient
@@ -77,7 +81,10 @@ func removeSystemPackage(pkg *Package) error {
 	cmd := exec.Command("/bin/sh", "-c", removeCmd)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("remove system package %s: %w", pkg.SystemPkgName, err)
+	}
+	return nil
 }
 
 // getSystemPackageName extracts the package name from a .deb or .rpm file
@@ -87,13 +94,13 @@ func getSystemPackageName(filename string) (string, error) {
 	case ".deb":
 		out, err := exec.Command("dpkg-deb", "--field", filename, "Package").Output()
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("read package name from %s: %w", filename, err)
 		}
 		return strings.TrimSpace(string(out)), nil
 	case ".rpm":
 		out, err := exec.Command("rpm", "-qp", "--queryformat", "%{NAME}", filename).Output()
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("read package name from %s: %w", filename, err)
 		}
 		return strings.TrimSpace(string(out)), nil
 	}

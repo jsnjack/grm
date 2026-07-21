@@ -24,7 +24,10 @@ var listCmd = &cobra.Command{
 		if len(config.Packages) > 0 {
 			if listRepoDescription {
 				tableHeader([]int{40}, []string{"Package", "Description"})
-				client := CreateClient()
+				client, err := CreateClient()
+				if err != nil {
+					return err
+				}
 				for _, p := range config.Packages {
 					var description string
 					repo, _, err := client.Repositories.Get(context.Background(), p.Owner, p.Repo)
@@ -67,7 +70,7 @@ var listCmd = &cobra.Command{
 }
 
 func init() {
-	listCmd.Flags().BoolVarP(&listRepoDescription, "description", "d", false, "Print description of the repositories")
+	listCmd.Flags().BoolVar(&listRepoDescription, "description", false, "Print description of the repositories")
 	listCmd.Flags().BoolVarP(&listFlat, "flat", "f", false, "Print installed packages in flat form")
 	rootCmd.AddCommand(listCmd)
 }
