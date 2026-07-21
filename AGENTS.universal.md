@@ -21,6 +21,10 @@ change. It must pass before reporting the task as complete.
   output is suppressed" not "if `isSilent` is true"; write "the retry limit"
   not "`maxRetries`". Code names are implementation details that belong in the
   code, not in the reasoning.
+- **Keep the build current.** After a change compiles, run `make build` —
+  don't wait for the full `make check` gate at the end. The user should
+  always have an up-to-date binary on disk to try, not just a change that
+  passed tests.
 - Never report work as done until all requirements are met and `make check`
   passes. If requirements cannot be met, say so explicitly.
 - When something is unclear, read the existing code first — match its patterns.
