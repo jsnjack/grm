@@ -154,6 +154,11 @@ that ordering.
   and following config symlinks. Native RPM fallback uses upgrade
   with `--replacepkgs` so failed batches can be retried. System packages cannot
   promise whole-batch rollback.
+- **Archive extraction writes only regular files and directories.**
+  `unpackArchive` (mholt/archives) skips symlinks and hardlinks and rejects
+  absolute entries or entries that escape the extraction directory. It keeps
+  the archive layout without stripping a top-level folder, so remembered
+  `--binary` member paths stay valid.
 - **`--version` is a new root flag** (cobra's built-in support, wired via
   `rootCmd.Version`), registered without cobra's default `-v` shorthand so
   it doesn't reclaim the shorthand freed up from removing `--verbose`. The
