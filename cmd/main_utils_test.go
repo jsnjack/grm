@@ -1,12 +1,36 @@
 package cmd
 
 import (
+	"bytes"
+	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/google/go-github/v93/github"
 )
+
+// withGitHubTransport routes all HTTP requests to handler and isolates the
+// token sources that CreateClient reads.
+func withGitHubTransport(t *testing.T, handler func(*http.Request) (*http.Response, error)) {
+	t.Helper()
+	oldConfig, oldToken, oldTransport := ConfigFile, rootToken, http.DefaultTransport
+	t.Cleanup(func() { ConfigFile, rootToken, http.DefaultTransport = oldConfig, oldToken, oldTransport })
+	rootToken = ""
+	t.Setenv("GITHUB_TOKEN", "")
+	ConfigFile = filepath.Join(t.TempDir(), "grm.yaml")
+	http.DefaultTransport = updateTransport(handler)
+}
+
+func httpResponse(request *http.Request, status int, body []byte) *http.Response {
+	header := make(http.Header)
+	header.Set("Content-Type", "application/json")
+	return &http.Response{StatusCode: status, Header: header, Body: io.NopCloser(bytes.NewReader(body)), Request: request}
+}
 
 func TestGenerateRandomString(t *testing.T) {
 	for _, n := range []int{0, 1, 6, 20} {
@@ -102,5 +126,86 @@ func TestGetTmpDir(t *testing.T) {
 				t.Errorf("getTmpDir(%q) = %q, want %q", c.path, got, c.want)
 			}
 		})
+	}
+}
+
+func TestCreateClientTokenSources(t *testing.T) {
+	tests := []struct {
+		name, flag, config, env, want string
+	}{
+		{"flag", "flag-token", "config-token", "env-token", "Bearer flag-token"},
+		{"config", "", "config-token", "env-token", "Bearer config-token"},
+		{"env", "", "", "env-token", "Bearer env-token"},
+		{"anonymous", "", "", "", ""},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var got string
+			withGitHubTransport(t, func(request *http.Request) (*http.Response, error) {
+				got = request.Header.Get("Authorization")
+				return httpResponse(request, http.StatusOK, []byte(`{"tag_name":"v1"}`)), nil
+			})
+			rootToken = test.flag
+			t.Setenv("GITHUB_TOKEN", test.env)
+			if test.config != "" {
+				config, err := ReadConfig(ConfigFile)
+				if err != nil {
+					t.Fatal(err)
+				}
+				config.Settings["token"] = test.config
+				if err := config.save(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			client, err := CreateClient()
+			if err != nil {
+				t.Fatal(err)
+			}
+			release, _, err := client.Repositories.GetLatestRelease(context.Background(), "owner", "repo")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if release.GetTagName() != "v1" || got != test.want {
+				t.Fatalf("got tag %q and Authorization %q, want v1 and %q", release.GetTagName(), got, test.want)
+			}
+		})
+	}
+}
+
+func TestDownloadFileDoesNotSendTokenToStorage(t *testing.T) {
+	var apiAuth string
+	storageAuth := []string{"not requested"}
+	withGitHubTransport(t, func(request *http.Request) (*http.Response, error) {
+		switch request.URL.Host {
+		case "api.github.com":
+			apiAuth = request.Header.Get("Authorization")
+			response := httpResponse(request, http.StatusFound, nil)
+			response.Header.Set("Location", "https://storage.example.com/tool")
+			return response, nil
+		case "storage.example.com":
+			storageAuth = request.Header.Values("Authorization")
+			return httpResponse(request, http.StatusOK, fixtureBinary), nil
+		}
+		return httpResponse(request, http.StatusNotFound, nil), nil
+	})
+	rootToken = "secret"
+	asset := &github.ReleaseAsset{ID: new(int64(1)), Name: new("tool"), Size: new(len(fixtureBinary))}
+	destination, err := downloadFile(asset, &Package{Owner: "owner", Repo: "repo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Dir(destination)) })
+	data, err := os.ReadFile(destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(data, fixtureBinary) {
+		t.Fatalf("downloaded %v, want %v", data, fixtureBinary)
+	}
+	if apiAuth != "Bearer secret" {
+		t.Fatalf("API request Authorization = %q, want the token", apiAuth)
+	}
+	if len(storageAuth) != 0 {
+		t.Fatalf("storage request Authorization = %q, want none", storageAuth)
 	}
 }

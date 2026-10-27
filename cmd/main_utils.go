@@ -13,9 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v32/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/schollz/progressbar/v2"
-	"golang.org/x/oauth2"
 )
 
 // DefaultBinDir is the default location for binary files
@@ -238,19 +237,19 @@ func CreateClient() (*github.Client, error) {
 			slog.Debug("using token from env")
 		}
 	}
+	var opts []github.ClientOptionsFunc
 	if token == "" {
 		// Give up, use anonymous session
 		slog.Debug("using anonymous client")
-		return github.NewClient(nil), nil
+	} else {
+		opts = append(opts, github.WithAuthToken(token))
 	}
 
-	ctx := context.Background()
-	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: token},
-	)
-	tc := oauth2.NewClient(ctx, ts)
-
-	return github.NewClient(tc), nil
+	client, err := github.NewClient(opts...)
+	if err != nil {
+		return nil, fmt.Errorf("create GitHub client: %w", err)
+	}
+	return client, nil
 }
 
 func tomd5(filePath string) (string, error) {

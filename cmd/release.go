@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/google/go-github/v32/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/schollz/progressbar/v2"
 	"github.com/spf13/cobra"
 )
@@ -52,8 +52,8 @@ var releaseCmd = &cobra.Command{
 		release, _, err := client.Repositories.GetReleaseByTag(context.Background(), pkg.Owner, pkg.Repo, releaseTag)
 		if err != nil {
 			// Create a release first
-			release, _, err = client.Repositories.CreateRelease(context.Background(), pkg.Owner, pkg.Repo, &github.RepositoryRelease{
-				TagName: &releaseTag,
+			release, _, err = client.Repositories.CreateRelease(context.Background(), pkg.Owner, pkg.Repo, github.CreateReleaseRequest{
+				TagName: releaseTag,
 			})
 		}
 
@@ -98,13 +98,13 @@ var releaseCmd = &cobra.Command{
 
 			mediaType := mime.TypeByExtension(filepath.Ext(f.Name()))
 
-			req, err := client.NewUploadRequest(u, reader, stat.Size(), mediaType)
+			req, err := client.NewUploadRequest(context.Background(), u, reader, stat.Size(), mediaType)
 			if err != nil {
 				return fmt.Errorf("build upload request for %s: %w", item, err)
 			}
 
 			asset := new(github.ReleaseAsset)
-			if _, err := client.Do(context.Background(), req, asset); err != nil {
+			if _, err := client.Do(req, asset); err != nil {
 				return fmt.Errorf("upload %s: %w", item, err)
 			}
 			msgOK("Uploaded")

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/go-github/v32/github"
+	"github.com/google/go-github/v93/github"
 )
 
 func TestInstallReleaseMigratesLegacyConfig(t *testing.T) {
@@ -138,10 +138,10 @@ esac`)
 				if tc.raw {
 					binaryName, payload = "grm", fixtureBinary
 				}
-				release := &github.RepositoryRelease{TagName: github.String(tag), Assets: []*github.ReleaseAsset{
-					{ID: github.Int64(1), Name: github.String(binaryName)},
-					{ID: github.Int64(2), Name: github.String("tools-gui-" + tag + ".x86_64.rpm")},
-					{ID: github.Int64(3), Name: github.String("tools-gui_" + tag + "_amd64.deb")},
+				release := &github.RepositoryRelease{TagName: tag, Assets: []*github.ReleaseAsset{
+					{ID: new(int64(1)), Name: new(binaryName)},
+					{ID: new(int64(2)), Name: new("tools-gui-" + tag + ".x86_64.rpm")},
+					{ID: new(int64(3)), Name: new("tools-gui_" + tag + "_amd64.deb")},
 				}}
 				if tc.missingType {
 					release.Assets = release.Assets[:2]

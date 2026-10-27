@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/google/go-github/v32/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/spf13/cobra"
 )
 
