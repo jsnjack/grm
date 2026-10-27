@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/google/go-github/v93/github"
-	"github.com/schollz/progressbar/v2"
+	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 )
 
@@ -79,9 +79,9 @@ var releaseCmd = &cobra.Command{
 				return fmt.Errorf("the asset to upload can't be a directory")
 			}
 
-			bar := progressbar.NewOptions(
-				int(stat.Size()),
-				progressbar.OptionSetBytes(int(stat.Size())),
+			bar := progressbar.NewOptions64(
+				stat.Size(),
+				progressbar.OptionShowBytes(true),
 			)
 
 			reader := &ProgressReader{

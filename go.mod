@@ -6,7 +6,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.16
 	github.com/google/go-github/v93 v93.0.0
 	github.com/mholt/archives v0.1.5
-	github.com/schollz/progressbar/v2 v2.15.0
+	github.com/schollz/progressbar/v3 v3.19.1
 	github.com/spf13/cobra v1.10.2
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -29,6 +29,7 @@ require (
 	github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db // indirect
 	github.com/nwaples/rardecode/v2 v2.4.5 // indirect
 	github.com/pierrec/lz4/v4 v4.1.33 // indirect
+	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.16.0 // indirect
 	github.com/sorairolake/lzip-go v0.3.8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
@@ -37,6 +38,8 @@ require (
 	github.com/stretchr/testify v1.12.1 // indirect
 	github.com/ulikunitz/xz v0.5.17 // indirect
 	go4.org v0.0.0-20261019143151-5b882263cdaf // indirect
+	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/term v0.47.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
