@@ -115,6 +115,51 @@ func TestGrmConfig_PutSetting(t *testing.T) {
 	}
 }
 
+func TestGrmConfigSavePreservesFile(t *testing.T) {
+	for _, symlink := range []bool{false, true} {
+		t.Run(map[bool]string{false: "private file", true: "symlink to private file"}[symlink], func(t *testing.T) {
+			dir := t.TempDir()
+			target := filepath.Join(dir, "settings.yaml")
+			if err := os.WriteFile(target, []byte("settings: {}\n"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			path := target
+			if symlink {
+				path = filepath.Join(dir, "grm.yaml")
+				if err := os.Symlink(filepath.Base(target), path); err != nil {
+					t.Fatal(err)
+				}
+			}
+			config, err := ReadConfig(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := config.PutSetting("token", "test-token"); err != nil {
+				t.Fatal(err)
+			}
+			info, err := os.Stat(target)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if info.Mode().Perm() != 0600 {
+				t.Errorf("config permissions = %o, want 600", info.Mode().Perm())
+			}
+			if symlink {
+				if _, err := os.Readlink(path); err != nil {
+					t.Errorf("config symlink was replaced: %v", err)
+				}
+			}
+			reloaded, err := ReadConfig(target)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if reloaded.Settings["token"] != "test-token" {
+				t.Error("setting was not saved in the original config file")
+			}
+		})
+	}
+}
+
 func TestResolveConfigFile_override(t *testing.T) {
 	got, err := resolveConfigFile("/custom/path.yaml")
 	if err != nil {

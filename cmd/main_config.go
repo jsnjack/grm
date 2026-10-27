@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -59,14 +60,59 @@ func (g *GrmConfig) save() error {
 	if err != nil {
 		return fmt.Errorf("marshal config: %w", err)
 	}
-	if err := os.WriteFile(g.path, data, 0644); err != nil {
+	path := g.path
+	mode := os.FileMode(0644)
+	if _, err := os.Lstat(path); err == nil {
+		path, err = filepath.EvalSymlinks(path)
+		if err != nil {
+			return fmt.Errorf("resolve config %s: %w", g.path, err)
+		}
+		info, err := os.Stat(path)
+		if err != nil {
+			return fmt.Errorf("inspect config %s: %w", path, err)
+		}
+		mode = info.Mode().Perm()
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("inspect config %s: %w", path, err)
+	}
+	file, err := os.CreateTemp(filepath.Dir(path), ".grm-*.yaml")
+	if err != nil {
+		return fmt.Errorf("create config file: %w", err)
+	}
+	defer func() {
+		if err := os.Remove(file.Name()); err != nil && !os.IsNotExist(err) {
+			slog.Log(context.Background(), LevelTrace, "remove temporary config", "err", err)
+		}
+	}()
+	if err := file.Chmod(mode); err != nil {
+		logClose(file)
+		return fmt.Errorf("set config permissions: %w", err)
+	}
+	if _, err := file.Write(data); err != nil {
+		logClose(file)
 		return fmt.Errorf("write config %s: %w", g.path, err)
+	}
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("close config %s: %w", g.path, err)
+	}
+	if err := os.Rename(file.Name(), path); err != nil {
+		return fmt.Errorf("replace config %s: %w", g.path, err)
 	}
 	return nil
 }
 
 // PutPackage saves package to config file
 func (g *GrmConfig) PutPackage(pkg *Package) error {
+	for i := range pkg.Components {
+		component := &pkg.Components[i]
+		if component.Filename != "" && component.MD5 == "" {
+			hash, err := tomd5(component.Filename)
+			if err != nil {
+				return fmt.Errorf("hash %s: %w", component.Filename, err)
+			}
+			component.MD5 = hash
+		}
+	}
 	if pkg.Filename != "" {
 		hash, err := tomd5(pkg.Filename)
 		if err != nil {
@@ -111,6 +157,12 @@ func ReadConfig(path string) (*GrmConfig, error) {
 		if err := config.save(); err != nil {
 			return nil, err
 		}
+	}
+	if config.Packages == nil {
+		config.Packages = make(map[string]Package)
+	}
+	if config.Settings == nil {
+		config.Settings = make(map[string]string)
 	}
 	return &config, nil
 }

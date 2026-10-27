@@ -10,8 +10,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -71,55 +69,59 @@ func downloadFile(asset *github.ReleaseAsset, pkg *Package) (string, error) {
 	return destination, nil
 }
 
-func sudo() string {
-	_, err := exec.LookPath("sudo")
-	if err == nil {
-		return "sudo "
-	}
-	return ""
-}
-
-func installBinary(filename string, renameBinaryTo string) (string, error) {
-	slog.Debug("installing as a binary")
-	tmpDir := getTmpDir(filename)
-
-	installedBinaryName := renameBinaryTo
-	if installedBinaryName == "" {
-		installedBinaryName = filepath.Base(filename)
-	}
-	installedFile := fmt.Sprintf("%s%s", DefaultBinDir, installedBinaryName)
-
-	msgStep("Installing %s %s %s", bold(strings.TrimPrefix(filename, tmpDir)), cyan(sArrow), bold(installedFile))
-
-	if err := removeBinary(installedFile); err != nil {
-		return "", err
-	}
-	cmdCp := exec.Command("/bin/sh", "-c", fmt.Sprintf("%scp %s %s", sudo(), filename, installedFile))
-	if err := cmdCp.Run(); err != nil {
-		return "", fmt.Errorf("copy %s to %s: %w", filename, installedFile, err)
-	}
-	cmdChmod := exec.Command("/bin/sh", "-c", sudo()+"chmod 755 "+installedFile)
-	err := cmdChmod.Run()
-	if err != nil {
-		err = fmt.Errorf("chmod %s: %w", installedFile, err)
-	}
-
-	if strings.HasPrefix(tmpDir, DefaultTmpDirPattern) {
-		slog.Debug("removing temp dir", "path", tmpDir)
-		cmdRm := exec.Command("/bin/sh", "-c", fmt.Sprintf("rm -rf %s", tmpDir))
-		if rmErr := cmdRm.Run(); rmErr != nil {
-			slog.Log(context.Background(), LevelTrace, "remove temp dir", "path", tmpDir, "err", rmErr)
+func runPrivileged(program string, args ...string) error {
+	if os.Geteuid() != 0 {
+		if _, err := exec.LookPath("sudo"); err == nil {
+			args = append([]string{program}, args...)
+			program = "sudo"
 		}
 	}
-	return installedFile, err
+	cmd := exec.Command(program, args...)
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("run %s: %w", program, err)
+	}
+	return nil
+}
+
+func installBinaryTo(filename, installedFile string) error {
+	msgStep("Installing %s %s %s", bold(filename), cyan(sArrow), bold(installedFile))
+	staged := installedFile + ".grm-" + generateRandomString(6)
+	defer func() {
+		if err := removeBinary(staged); err != nil {
+			slog.Log(context.Background(), LevelTrace, "remove staged binary", "path", staged, "err", err)
+		}
+	}()
+	if err := runPrivileged("cp", "--", filename, staged); err != nil {
+		return fmt.Errorf("stage %s: %w", installedFile, err)
+	}
+	if err := runPrivileged("chmod", "755", staged); err != nil {
+		return fmt.Errorf("chmod %s: %w", staged, err)
+	}
+	if err := runPrivileged("mv", "-f", "--", staged, installedFile); err != nil {
+		return fmt.Errorf("replace %s: %w", installedFile, err)
+	}
+	return nil
 }
 
 func removeBinary(filename string) error {
-	cmdRm := exec.Command("/bin/sh", "-c", fmt.Sprintf("%srm -f %s", sudo(), filename))
-	if err := cmdRm.Run(); err != nil {
+	if filename == "" {
+		return fmt.Errorf("cannot remove an empty binary path")
+	}
+	if err := runPrivileged("rm", "-f", "--", filename); err != nil {
 		return fmt.Errorf("remove %s: %w", filename, err)
 	}
 	return nil
+}
+
+func cleanupDownload(filename string) {
+	dir := getTmpDir(filename)
+	if dir == "" {
+		return
+	}
+	if err := os.RemoveAll(dir); err != nil {
+		slog.Log(context.Background(), LevelTrace, "remove temporary directory", "path", dir, "err", err)
+	}
 }
 
 func getTmpDir(path string) string {
@@ -156,29 +158,6 @@ func generateRandomString(n int) string {
 	}
 
 	return string(b)
-}
-
-// askForNumber prompts for a number between 1 and to (inclusive). If --yes
-// was passed, it returns 1 without prompting.
-func askForNumber(msg string, to int) (int, error) {
-	if rootYes {
-		return 1, nil
-	}
-	fmt.Printf("%s %s ", msg, dim(fmt.Sprintf("[1-%d]", to)))
-	var response string
-	if _, err := fmt.Scanln(&response); err != nil {
-		return 0, fmt.Errorf("read response: %w", err)
-	}
-	responseInt, err := strconv.Atoi(response)
-	if err != nil {
-		fmt.Printf("  Provide a number (%s)\n", err)
-		return askForNumber(msg, to)
-	}
-	if responseInt > to || responseInt < 1 {
-		fmt.Println("  Out of range")
-		return askForNumber(msg, to)
-	}
-	return responseInt, nil
 }
 
 // askForConfirmation prompts for a yes/no answer. If --yes was passed, it

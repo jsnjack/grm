@@ -10,9 +10,12 @@ import (
 	"github.com/mholt/archiver/v3"
 )
 
-func installArchive(filename string, renameBinaryTo string) (string, error) {
+func unpackArchive(filename string) (string, error) {
 	slog.Debug("installing from an archive")
-	tmpDir := getTmpDir(filename)
+	tmpDir := filepath.Join(filepath.Dir(filename), "unpacked")
+	if err := os.MkdirAll(tmpDir, 0755); err != nil {
+		return "", fmt.Errorf("create extraction directory: %w", err)
+	}
 	msgStep("Unpacking archive %s", bold(strings.TrimPrefix(filename, tmpDir)))
 	err := archiver.Unarchive(filename, tmpDir)
 	if err != nil {
@@ -26,12 +29,7 @@ func installArchive(filename string, renameBinaryTo string) (string, error) {
 		slog.Debug("unpacked", "path", tmpDir)
 	}
 
-	msgStep("Looking for a binary file...")
-	filenameA, err := findBinaryFile(tmpDir)
-	if err != nil {
-		return "", fmt.Errorf("find binary in %s: %w", tmpDir, err)
-	}
-	return installBinary(filenameA, renameBinaryTo)
+	return tmpDir, nil
 }
 
 type fileEntry struct {
@@ -41,8 +39,7 @@ type fileEntry struct {
 	isBinary bool
 }
 
-// findBinaryFile finds a binary file in the given directory
-func findBinaryFile(tmpDir string) (string, error) {
+func findBinaryFiles(tmpDir string) ([]fileEntry, error) {
 	var files []fileEntry
 	err := filepath.Walk(tmpDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -60,16 +57,20 @@ func findBinaryFile(tmpDir string) (string, error) {
 		if err != nil {
 			ct = "unknown"
 		}
-		relPath := strings.TrimPrefix(path, tmpDir)
+		relPath, err := filepath.Rel(tmpDir, path)
+		if err != nil {
+			return fmt.Errorf("relative path for %s: %w", path, err)
+		}
+		relPath = filepath.ToSlash(relPath)
 		filename := filepath.Base(path)
 		// Ignore files starting with "._" (macOS), they are not executable
 		// https://github.com/jsnjack/grm/issues/12
-		isBinary := isExecutableFileType(ct) && !strings.HasPrefix(filename, "._")
+		isBinary := isExecutableFileType(ct) && !strings.HasPrefix(filename, "._") && !isLibrary(filename)
 		files = append(files, fileEntry{relPath, path, ct, isBinary})
 		return nil
 	})
 	if err != nil {
-		return "", fmt.Errorf("walk %s: %w", tmpDir, err)
+		return nil, fmt.Errorf("walk %s: %w", tmpDir, err)
 	}
 
 	// Find max filename width for alignment
@@ -81,20 +82,26 @@ func findBinaryFile(tmpDir string) (string, error) {
 	}
 
 	// Print and select
-	var binaryFilepath string
+	var binaries []fileEntry
 	for _, f := range files {
 		if f.isBinary {
 			fmt.Printf("    %s %s %s\n", green(sCheck), padCol(f.relPath, maxW, nil), green(f.ct))
 		} else {
 			fmt.Printf("    %s %s %s\n", dim(sTriang), padCol(f.relPath, maxW, dim), dim(f.ct))
 		}
-		if binaryFilepath == "" && f.isBinary {
-			binaryFilepath = f.fullPath
+		if f.isBinary {
+			binaries = append(binaries, f)
 		}
 	}
 
-	if binaryFilepath == "" {
-		return "", fmt.Errorf("unable to find a binary file in archive")
+	if len(binaries) == 0 {
+		return nil, fmt.Errorf("unable to find a binary file in archive")
 	}
-	return binaryFilepath, nil
+	return binaries, nil
+}
+
+func isLibrary(filename string) bool {
+	name := strings.ToLower(filename)
+	return strings.HasSuffix(name, ".so") || strings.Contains(name, ".so.") ||
+		strings.HasSuffix(name, ".dylib") || strings.HasSuffix(name, ".dll") || strings.HasSuffix(name, ".node")
 }

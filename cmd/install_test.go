@@ -11,7 +11,7 @@ func TestSelectAsset_none_suitable(t *testing.T) {
 	assets := []*github.ReleaseAsset{
 		{Name: github.String("app-x86_64.AppImage")},
 	}
-	_, err := selectAsset(assets, nil)
+	_, err := selectAssets(assets, nil)
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
@@ -24,12 +24,12 @@ func TestSelectAsset_single_suitable(t *testing.T) {
 	assets := []*github.ReleaseAsset{
 		{Name: github.String("tool-linux-amd64.tar.gz")},
 	}
-	got, err := selectAsset(assets, nil)
+	got, err := selectAssets(assets, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
-	if got.GetName() != "tool-linux-amd64.tar.gz" {
-		t.Errorf("got %s, want tool-linux-amd64.tar.gz", got.GetName())
+	if len(got) != 1 || got[0].GetName() != "tool-linux-amd64.tar.gz" {
+		t.Errorf("got %v, want tool-linux-amd64.tar.gz", got)
 	}
 }
 
@@ -149,7 +149,6 @@ func TestInstall_filterSuitableAssets_empty_filter(t *testing.T) {
 	}
 	expected := []string{
 		"hugo_0.80.0_Linux-64bit.tar.gz",
-		"hugo_0.80.0_Linux-ARM64.tar.gz",
 		"hugo_extended_0.80.0_Linux-64bit.tar.gz",
 	}
 	output := filterSuitableAssets(input, nil)

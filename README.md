@@ -9,7 +9,7 @@ grm
  - zyedidia/micro
  - ...
 
-`grm` inspects release assets for a binary file and when the file is found, downloads and installs it to `/usr/local/bin/` directory.
+`grm` installs selected release binaries to `/usr/local/bin/` and installs RPM/DEB assets through the system package manager. One repository can provide several binaries or a mix of binaries and system packages.
 
 ### How to use it?
 ```bash
@@ -65,6 +65,78 @@ grm install gohugoio/hugo~=v0.6*
 # Install any versioned stable release (glob with character class)
 grm install gohugoio/hugo~=v[0-9]*-stable
 ```
+
+#### Installing several binaries or assets
+
+The asset prompt accepts comma-separated numbers, ranges, or `all`. Compatible
+RPM assets appear first when `rpm` is available. You can select a CLI archive
+and a GUI RPM from the same release together.
+
+After unpacking an archive, grm asks which binaries to install. With `--yes`,
+it installs every eligible binary in each selected archive. For asset selection,
+`--yes` chooses the first suitable asset; use repeated `--asset` flags to select
+several assets without a prompt.
+
+```bash
+# Install both binaries from Yazi's selected archive on a new install
+grm install sxyazi/yazi --yes
+
+# Expand an existing single-binary Yazi installation
+grm install sxyazi/yazi --binary ya --binary yazi --yes
+
+# Select a CLI archive and a GUI RPM explicitly
+grm install jsnjack/bunk \
+  --asset 'bunk_linux_amd64.tar.gz' \
+  --asset 'bunk-gui-*.x86_64.rpm'
+
+# Select individual archive binaries, optionally renaming them
+grm install sxyazi/yazi --binary ya --binary 'yazi=my-yazi'
+
+# Scope a binary selector to one of several archives
+grm install owner/repo \
+  --asset 'client_*linux_amd64.tar.gz' \
+  --asset 'tools_*linux_amd64.tar.gz' \
+  --binary 'client_*.tar.gz::client' \
+  --binary 'tools_*.tar.gz::admin=repo-admin'
+
+grm list --long
+```
+
+Each `--asset` name or glob must match exactly one release asset. A `--binary`
+selector matches an archive-relative path or basename; quote globs so the shell
+does not expand them. A global binary selector applies to every selected binary
+asset; use `asset-glob::path-glob` to scope it when archives have different
+contents. `--rename` remains available when installing exactly one binary.
+
+Asset and binary choices, including renames, are saved for later installs and
+updates. Version strings in asset and member paths are replaced with globs so
+those choices can follow subsequent releases. Missing or ambiguous remembered
+choices produce an error with instructions to select again. Newly appearing
+archive binaries are not added to remembered selections automatically.
+
+Passing `--asset` replaces the saved asset selection; passing `--binary`
+replaces the binary selection in the assets it applies to. Changing `--filter`
+starts asset selection again. These flags work even when the release version is
+already installed. The installation plan lists all outputs and any previously
+tracked components that will be removed when the new selection succeeds.
+
+All components share a repository's release and lock. `update` updates them
+together; `remove` removes every tracked binary and system package. Downloads
+and conflict checks finish before installation. Completed operations are saved
+individually, and failed batches stay marked incomplete so a later install or
+update can retry them. System package operations are not rolled back.
+
+Existing configs work without a manual conversion. Reading a config leaves it
+unchanged. On the next install or update, old binary installs keep one binary
+and its installed name, and old DEB/RPM installs keep their package type and
+name. Renamed legacy archive installs retain the old first-binary selection.
+Use `--asset` or `--binary` to expand an existing selection. Missing binaries
+or changed system package names stop migration before installation.
+
+Migration preserves settings, filters, and locks. New and migrated installs use
+`selections` and `components` records; older grm versions cannot manage these
+records if you downgrade. For new archive selections, `--yes` installs all
+eligible binaries; existing selections stay unchanged.
 
 ### Keeping grm up to date
 Once installed, `grm` can update itself:

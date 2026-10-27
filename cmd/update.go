@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -74,7 +75,7 @@ var updateCmd = &cobra.Command{
 					results[i] = r
 					return
 				}
-				release, err := selectRelease(&Package{Owner: p.Owner, Repo: p.Repo})
+				release, err := selectRelease(&Package{Owner: p.Owner, Repo: p.Repo, VersionFilter: p.VersionFilter})
 				if err != nil {
 					r.err = err
 					results[i] = r
@@ -121,6 +122,7 @@ var updateCmd = &cobra.Command{
 		fmt.Printf("%s\n", cl)
 
 		var toUpdate []checkResult
+		var updateErrors []error
 		for _, r := range results {
 			name := r.pkg.GetFullName()
 			fmt.Print(cl)
@@ -129,6 +131,7 @@ var updateCmd = &cobra.Command{
 				msgLocked("%-40s %s", name, yellow("locked"))
 			case r.err != nil:
 				msgFail("%-40s %s", name, red("error: "+r.err.Error()))
+				updateErrors = append(updateErrors, fmt.Errorf("check %s for updates: %w", name, r.err))
 			case r.latest:
 				msgOK("%-40s %s", name, dim("latest ("+r.pkg.Version+")"))
 			default:
@@ -138,6 +141,9 @@ var updateCmd = &cobra.Command{
 		}
 
 		if len(toUpdate) == 0 {
+			if len(updateErrors) != 0 {
+				return errors.Join(updateErrors...)
+			}
 			fmt.Println()
 			msgOK("All packages are up to date")
 			return nil
@@ -148,22 +154,23 @@ var updateCmd = &cobra.Command{
 		msgUpdate("%d package(s) can be updated", len(toUpdate))
 		ok, err := askForConfirmation("Proceed with update?")
 		if err != nil {
-			return err
+			return errors.Join(append(updateErrors, err)...)
 		}
 		if !ok {
-			return nil
+			return errors.Join(updateErrors...)
 		}
 
 		// Phase 4: install sequentially (interactive prompts + config writes)
 		fmt.Println()
 		for _, r := range toUpdate {
 			msgInfo("Updating %s...", bold(r.pkg.GetFullName()))
-			err := installRelease(r.release, &r.pkg)
+			err := installRelease(r.release, &r.pkg, installOptions{})
 			if err != nil {
 				msgFail("%s", err)
+				updateErrors = append(updateErrors, fmt.Errorf("update %s: %w", r.pkg.GetFullName(), err))
 			}
 		}
-		return nil
+		return errors.Join(updateErrors...)
 	},
 }
 

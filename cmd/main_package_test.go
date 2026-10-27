@@ -340,3 +340,46 @@ func TestUtils_CreatePackage_alias_with_version(t *testing.T) {
 		t.Errorf("Expected v0.50, got %s", p.Version)
 	}
 }
+
+func TestPackageVerifyVersionMultipleComponents(t *testing.T) {
+	cases := []struct {
+		name                         string
+		missing, changed, incomplete bool
+	}{
+		{name: "all present"},
+		{name: "second binary missing", missing: true},
+		{name: "second binary changed", changed: true},
+		{name: "same version incomplete", incomplete: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			pkg := Package{Owner: "owner", Repo: "repo", Version: "v1", Incomplete: tc.incomplete}
+			for _, name := range []string{"ya", "yazi"} {
+				filename := filepath.Join(t.TempDir(), name)
+				if err := os.WriteFile(filename, fixtureBinary, 0755); err != nil {
+					t.Fatal(err)
+				}
+				hash, err := tomd5(filename)
+				if err != nil {
+					t.Fatal(err)
+				}
+				pkg.Components = append(pkg.Components, InstalledComponent{Filename: filename, MD5: hash, Version: "v1"})
+			}
+			second := pkg.Components[1].Filename
+			if tc.missing {
+				if err := os.Remove(second); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if tc.changed {
+				if err := os.WriteFile(second, []byte("different"), 0755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			wantError := tc.missing || tc.changed || tc.incomplete
+			if err := pkg.VerifyVersion("v1"); (err != nil) != wantError {
+				t.Fatalf("got %v, want error=%v", err, wantError)
+			}
+		})
+	}
+}

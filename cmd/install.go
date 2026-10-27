@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path"
 	"runtime"
+	"sort"
 	"strings"
 
 	"github.com/google/go-github/v32/github"
@@ -17,6 +18,8 @@ var installFilter []string
 var installRefresh bool
 var installLock bool
 var installRename string
+var installAssets []string
+var installBinaries []string
 
 // installCmd represents the install command
 var installCmd = &cobra.Command{
@@ -73,10 +76,27 @@ Examples:
 			if err != nil {
 				return err
 			}
-			pkg.Filter = installFilter
-			if installRename != "" {
-				pkg.RenameBinaryTo = installRename
+			requested := pkg
+			if previous, ok := config.Packages[pkg.GetFullName()]; ok {
+				previous.Components = append([]InstalledComponent(nil), previous.Components...)
+				pkg = &previous
 			}
+			if cmd.Flags().Changed("filter") {
+				pkg.Filter = installFilter
+				pkg.Selections = nil
+			}
+			if requested.VersionFilter != "" {
+				pkg.VersionFilter = requested.VersionFilter
+			} else if requested.Version != "" {
+				pkg.VersionFilter = ""
+			} else {
+				requested.VersionFilter = pkg.VersionFilter
+			}
+			binaries, err := parseBinaryRequests(installBinaries)
+			if err != nil {
+				return err
+			}
+			options := installOptions{assets: installAssets, binaries: binaries, rename: installRename, lock: installLock, reselect: cmd.Flags().Changed("filter")}
 
 			// Check that package is not locked
 			for _, installedItem := range config.Packages {
@@ -89,13 +109,13 @@ Examples:
 			}
 
 			// Select the release based on version
-			release, err := selectRelease(pkg)
+			release, err := selectRelease(requested)
 			if err != nil {
 				return err
 			}
 			msgOK("Found release %s", boldCyan(release.GetTagName()))
 
-			if !installRefresh {
+			if !installRefresh && !installLock && requested.VersionFilter == "" && !cmd.Flags().Changed("asset") && !cmd.Flags().Changed("binary") && !cmd.Flags().Changed("rename") && !cmd.Flags().Changed("filter") {
 				// Check if package of selected release has already been installed
 				for _, installedItem := range config.Packages {
 					if installedItem.GetFullName() == pkg.GetFullName() {
@@ -107,17 +127,14 @@ Examples:
 				}
 			}
 
-			err = installRelease(release, pkg)
+			if err := installRelease(release, pkg, options); err != nil {
+				return err
+			}
+			config, err = ReadConfig(ConfigFile)
 			if err != nil {
 				return err
 			}
 
-			if installLock {
-				pkg.Locked = true
-			}
-			if err := config.PutPackage(pkg); err != nil {
-				return err
-			}
 		}
 		return nil
 	},
@@ -137,46 +154,42 @@ considered suitable`,
 	installCmd.Flags().BoolVarP(&installRefresh, "refresh", "r", false, "Reinstall package")
 	installCmd.Flags().BoolVarP(&installLock, "lock", "l", false, "Lock package version")
 	installCmd.Flags().StringVarP(&installRename, "rename", "n", "", "Rename binary file during the installation")
+	installCmd.Flags().StringArrayVar(&installAssets, "asset", nil, "Select an asset by exact name or glob (repeat for multiple assets)")
+	installCmd.Flags().StringArrayVar(&installBinaries, "binary", nil, "Select an archive binary: [asset-glob::]path-glob[=name] (repeatable)")
 }
 
-func selectAsset(assets []*github.ReleaseAsset, filter []string) (*github.ReleaseAsset, error) {
-	// Get all available assets
-	assetNames := []string{}
-	for _, item := range assets {
-		assetNames = append(assetNames, item.GetName())
+func selectAssets(assets []*github.ReleaseAsset, filter []string) ([]*github.ReleaseAsset, error) {
+	names := make([]string, 0, len(assets))
+	for _, asset := range assets {
+		names = append(names, asset.GetName())
 	}
-
-	filtered := filterSuitableAssets(assetNames, filter)
-
-	// Print suitable assets
+	filtered := filterSuitableAssets(names, filter)
+	if _, err := exec.LookPath("rpm"); err == nil {
+		sort.SliceStable(filtered, func(i, j int) bool {
+			return strings.HasSuffix(strings.ToLower(filtered[i]), ".rpm") && !strings.HasSuffix(strings.ToLower(filtered[j]), ".rpm")
+		})
+	}
 	msgStep("Found %d suitable assets", len(filtered))
-	for id, item := range filtered {
-		fmt.Printf("    %s %s\n", dim(fmt.Sprintf("%d)", id+1)), item)
-	}
-
-	// Select the asset
-	var selected string
-	switch len(filtered) {
-	case 0:
+	if len(filtered) == 0 {
 		return nil, fmt.Errorf("supported asset not found")
-	case 1:
-		selected = filtered[0]
-	default:
-		idx, err := askForNumber("Select suitable asset:", len(filtered))
-		if err != nil {
-			return nil, err
-		}
-		selected = filtered[idx-1]
 	}
-
-	msgOK("Selected asset %s", bold(selected))
-	for _, item := range assets {
-		if item.GetName() == selected {
-			return item, nil
+	for i, name := range filtered {
+		fmt.Printf("    %d) %s\n", i+1, name)
+	}
+	indices, err := askForNumbers("Select assets (comma-separated numbers or ranges):", len(filtered), false)
+	if err != nil {
+		return nil, err
+	}
+	var selected []*github.ReleaseAsset
+	for _, index := range indices {
+		for _, asset := range assets {
+			if asset.GetName() == filtered[index-1] {
+				selected = append(selected, asset)
+				break
+			}
 		}
 	}
-
-	return nil, fmt.Errorf("unexpected error when selecting the asset")
+	return selected, nil
 }
 
 func filterSuitableAssets(input []string, filters []string) []string {
@@ -191,16 +204,22 @@ func filterSuitableAssetsForPlatform(input []string, filters []string, goos, goa
 		}
 	}
 	// Filter by operating system
-	filtered = preferToContain(filtered, goos)
+	platformAssets := preferToContain(filtered, goos)
+	if goos == "linux" {
+		for _, name := range filtered {
+			lower := strings.ToLower(name)
+			if (strings.HasSuffix(lower, ".rpm") || strings.HasSuffix(lower, ".deb")) && !containsAsset(platformAssets, name) {
+				platformAssets = append(platformAssets, name)
+			}
+		}
+	}
+	filtered = platformAssets
 	// Filter by architecture. For well-known arch pairs (amd64/x86_64,
 	// arm64/aarch64), match any equivalent name at once so that e.g. an
 	// "amd64" .deb does not shadow an "x86_64" .rpm.
 	switch goarch {
 	case "amd64":
-		filtered = preferToContainAny(filtered, "amd64", "x86_64")
-		filtered = preferToContain(filtered, "64")
-		filtered = preferToContain(filtered, goos+"64")
-		filtered = preferToContain(filtered, "x64")
+		filtered = preferToContainAny(filtered, "amd64", "x86_64", "x64", goos+"64", "-64", "_64")
 	case "arm64":
 		filtered = preferToContainAny(filtered, "arm64", "aarch64")
 	case "386":
@@ -219,18 +238,20 @@ func filterSuitableAssetsForPlatform(input []string, filters []string, goos, goa
 		}
 	}
 	// Exclude system packages for package managers not available on this system
-	if _, err := exec.LookPath("dpkg"); err != nil {
+	if _, err := exec.LookPath("dpkg"); err != nil || goos != "linux" {
 		slog.Debug("dpkg not found, excluding .deb assets")
-		filtered = exludeExtensions(filtered, ".deb")
+		filtered = hardExcludeExtension(filtered, ".deb")
 	} else {
 		slog.Debug("dpkg found, keeping .deb assets")
 	}
-	if _, err := exec.LookPath("rpm"); err != nil {
+	if _, err := exec.LookPath("rpm"); err != nil || goos != "linux" {
 		slog.Debug("rpm not found, excluding .rpm assets")
-		filtered = exludeExtensions(filtered, ".rpm")
+		filtered = hardExcludeExtension(filtered, ".rpm")
 	} else {
 		slog.Debug("rpm found, keeping .rpm assets")
 	}
+	filtered = hardExcludeExtension(filtered, ".src.rpm")
+	filtered = hardExcludeExtension(filtered, ".nosrc.rpm")
 	// AppImage is not supported
 	filtered = hardExcludeExtension(filtered, ".AppImage")
 	filtered = hardExcludeExtension(filtered, ".zsync")
@@ -374,31 +395,11 @@ func selectRelease(pkg *Package) (*github.RepositoryRelease, error) {
 	return nil, fmt.Errorf("no release matching ~=%s found for %s/%s", pkg.VersionFilter, pkg.Owner, pkg.Repo)
 }
 
-func installRelease(release *github.RepositoryRelease, pkg *Package) error {
-	msgStep("Inspecting assets...")
-	// Select best mached asset
-	asset, err := selectAsset(release.Assets, pkg.Filter)
-	if err != nil {
-		return err
+func containsAsset(names []string, name string) bool {
+	for _, item := range names {
+		if item == name {
+			return true
+		}
 	}
-
-	// Install package
-	installedFile, err := Install(asset, pkg)
-	if err != nil {
-		return err
-	}
-
-	// Write changes to config file
-	pkg.Filename = installedFile
-	pkg.Version = release.GetTagName()
-	config, err := ReadConfig(ConfigFile)
-	if err != nil {
-		return err
-	}
-	err = config.PutPackage(pkg)
-	if err != nil {
-		return err
-	}
-	msgDone()
-	return nil
+	return false
 }

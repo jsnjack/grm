@@ -9,7 +9,7 @@ import (
 func Test_FindBinaryFile_empty_dir(t *testing.T) {
 	tmpDir := t.TempDir() + "/"
 
-	_, err := findBinaryFile(tmpDir)
+	_, err := findBinaryFiles(tmpDir)
 	if err == nil {
 		t.Errorf("Expected error, got <nil>")
 		return
@@ -29,13 +29,13 @@ func Test_FindBinaryFile_simple_binary(t *testing.T) {
 		return
 	}
 
-	foundFilename, err := findBinaryFile(tmpDir)
+	foundFilename, err := findBinaryFiles(tmpDir)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 		return
 	}
-	if foundFilename != binaryFilename {
-		t.Errorf("Expected %s, got %s", binaryFilename, foundFilename)
+	if len(foundFilename) != 1 || foundFilename[0].fullPath != binaryFilename {
+		t.Errorf("Expected %s, got %v", binaryFilename, foundFilename)
 	}
 }
 
@@ -55,13 +55,13 @@ func Test_FindBinaryFile_simple_binary_nested(t *testing.T) {
 		return
 	}
 
-	foundFilename, err := findBinaryFile(tmpDir)
+	foundFilename, err := findBinaryFiles(tmpDir)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 		return
 	}
-	if foundFilename != binaryFilename {
-		t.Errorf("Expected %s, got %s", binaryFilename, foundFilename)
+	if len(foundFilename) != 1 || foundFilename[0].fullPath != binaryFilename {
+		t.Errorf("Expected %s, got %v", binaryFilename, foundFilename)
 	}
 }
 
@@ -83,12 +83,12 @@ func Test_FindBinaryFile_macos_binary(t *testing.T) {
 		return
 	}
 
-	foundFilename, err := findBinaryFile(tmpDir)
+	foundFilename, err := findBinaryFiles(tmpDir)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 		return
 	}
-	if foundFilename != binaryFilename {
-		t.Errorf("Expected %s, got %s", binaryFilename, foundFilename)
+	if len(foundFilename) != 1 || foundFilename[0].fullPath != binaryFilename {
+		t.Errorf("Expected %s, got %v", binaryFilename, foundFilename)
 	}
 }

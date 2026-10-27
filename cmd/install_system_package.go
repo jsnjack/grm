@@ -1,90 +1,141 @@
 package cmd
 
 import (
-	"context"
+	"archive/tar"
+	"errors"
 	"fmt"
-	"log/slog"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
-func installSystemPackage(filename string, pkg *Package) (string, error) {
+func installSystemPackage(filename string) error {
 	ext := strings.ToLower(filepath.Ext(filename))
 
-	pkgName, err := getSystemPackageName(filename)
-	if err != nil {
-		return "", fmt.Errorf("could not determine package name: %w", err)
-	}
-	pkg.SystemPkgName = pkgName
-	pkg.SystemPkgType = strings.TrimPrefix(ext, ".")
-
-	var installCmd string
+	var program string
+	var args []string
 	switch ext {
 	case ".deb":
 		if _, err := exec.LookPath("apt"); err == nil {
-			installCmd = fmt.Sprintf("%sapt install -y %s", sudo(), filename)
+			program, args = "apt", []string{"install", "-y", filename}
 		} else {
-			installCmd = fmt.Sprintf("%sdpkg -i %s", sudo(), filename)
+			program, args = "dpkg", []string{"-i", filename}
 		}
 	case ".rpm":
 		if _, err := exec.LookPath("dnf"); err == nil {
-			installCmd = fmt.Sprintf("%sdnf install -y %s", sudo(), filename)
+			program, args = "dnf", []string{"install", "-y", filename}
 		} else {
-			installCmd = fmt.Sprintf("%srpm -i %s", sudo(), filename)
+			program, args = "rpm", []string{"-U", "--replacepkgs", filename}
 		}
 	default:
-		return "", fmt.Errorf("unsupported system package extension: %s", ext)
+		return fmt.Errorf("unsupported system package extension: %s", ext)
 	}
 
 	msgStep("Installing system package %s", bold(filepath.Base(filename)))
-	cmd := exec.Command("/bin/sh", "-c", installCmd)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("install %s: %w", filename, err)
+	if err := runPrivileged(program, args...); err != nil {
+		return fmt.Errorf("install %s: %w", filename, err)
 	}
-
-	// Clean up tmp dir
-	tmpDir := getTmpDir(filename)
-	if strings.HasPrefix(tmpDir, DefaultTmpDirPattern) {
-		slog.Debug("removing temp dir", "path", tmpDir)
-		if err := exec.Command("/bin/sh", "-c", fmt.Sprintf("rm -rf %s", tmpDir)).Run(); err != nil {
-			slog.Log(context.Background(), LevelTrace, "remove temp dir", "path", tmpDir, "err", err)
-		}
-	}
-
-	// No file to track — version tag + SystemPkgName are sufficient
-	return "", nil
+	return nil
 }
 
-func removeSystemPackage(pkg *Package) error {
-	var removeCmd string
+func removeSystemPackage(pkg InstalledComponent) error {
+	var program string
+	var args []string
 	switch pkg.SystemPkgType {
 	case "deb":
 		if _, err := exec.LookPath("apt"); err == nil {
-			removeCmd = fmt.Sprintf("%sapt remove -y %s", sudo(), pkg.SystemPkgName)
+			program, args = "apt", []string{"remove", "-y", pkg.SystemPkgName}
 		} else {
-			removeCmd = fmt.Sprintf("%sdpkg -r %s", sudo(), pkg.SystemPkgName)
+			program, args = "dpkg", []string{"-r", pkg.SystemPkgName}
 		}
 	case "rpm":
 		if _, err := exec.LookPath("dnf"); err == nil {
-			removeCmd = fmt.Sprintf("%sdnf remove -y %s", sudo(), pkg.SystemPkgName)
+			program, args = "dnf", []string{"remove", "-y", pkg.SystemPkgName}
 		} else {
-			removeCmd = fmt.Sprintf("%srpm -e %s", sudo(), pkg.SystemPkgName)
+			program, args = "rpm", []string{"-e", pkg.SystemPkgName}
 		}
 	default:
 		return fmt.Errorf("unknown system package type: %q", pkg.SystemPkgType)
 	}
 
-	cmd := exec.Command("/bin/sh", "-c", removeCmd)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
+	if err := runPrivileged(program, args...); err != nil {
 		return fmt.Errorf("remove system package %s: %w", pkg.SystemPkgName, err)
 	}
 	return nil
+}
+
+func checkSystemPackageSupport(ext string) error {
+	if runtime.GOOS != "linux" {
+		return fmt.Errorf("system packages require Linux")
+	}
+	program := "rpm"
+	if ext == ".deb" {
+		program = "dpkg"
+	}
+	if _, err := exec.LookPath(program); err != nil {
+		return fmt.Errorf("cannot install %s: %s is unavailable", ext, program)
+	}
+	return nil
+}
+
+func checkBinaryOwnership(filename string) error {
+	if _, err := os.Lstat(filename); os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("inspect destination %s: %w", filename, err)
+	}
+	if _, err := exec.LookPath("rpm"); err == nil {
+		if out, err := exec.Command("rpm", "-qf", "--queryformat", "%{NAME}", filename).Output(); err == nil {
+			return fmt.Errorf("installation conflict: %s is owned by RPM %s", filename, strings.TrimSpace(string(out)))
+		}
+	}
+	if _, err := exec.LookPath("dpkg-query"); err == nil {
+		if out, err := exec.Command("dpkg-query", "-S", filename).Output(); err == nil {
+			return fmt.Errorf("installation conflict: %s is owned by a system package: %s", filename, strings.TrimSpace(string(out)))
+		}
+	}
+	return nil
+}
+
+func getSystemPackageFiles(filename string) ([]string, error) {
+	if strings.EqualFold(filepath.Ext(filename), ".rpm") {
+		out, err := exec.Command("rpm", "-qpl", filename).Output()
+		if err != nil {
+			return nil, fmt.Errorf("list files in %s: %w", filename, err)
+		}
+		return strings.FieldsFunc(string(out), func(r rune) bool { return r == '\n' }), nil
+	}
+	cmd := exec.Command("dpkg-deb", "--fsys-tarfile", filename)
+	pipe, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, fmt.Errorf("open package listing: %w", err)
+	}
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("read package contents: %w", err)
+	}
+	var files []string
+	reader := tar.NewReader(pipe)
+	var readErr error
+	for {
+		header, err := reader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			readErr = err
+			break
+		}
+		files = append(files, filepath.Join("/", header.Name))
+	}
+	_, drainErr := io.Copy(io.Discard, pipe)
+	waitErr := cmd.Wait()
+	if readErr != nil || drainErr != nil || waitErr != nil {
+		return nil, fmt.Errorf("list files in %s: %w", filename, errors.Join(readErr, drainErr, waitErr))
+	}
+	return files, nil
 }
 
 // getSystemPackageName extracts the package name from a .deb or .rpm file

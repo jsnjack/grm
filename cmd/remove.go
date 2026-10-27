@@ -47,19 +47,33 @@ var removeCmd = &cobra.Command{
 			if !ok {
 				return nil
 			}
-			if pkg.IsSystemPackage() {
-				err = removeSystemPackage(&pkg)
-			} else {
-				err = removeBinary(pkg.Filename)
-			}
-			if err != nil {
+			if err := removeInstalledPackage(config, &pkg, removeComponent); err != nil {
 				return err
 			}
-			// Clean db
-			delete(config.Packages, item)
 		}
 		return config.save()
 	},
+}
+
+func removeInstalledPackage(config *GrmConfig, pkg *Package, remove func(InstalledComponent) error) error {
+	pkg.Components = append([]InstalledComponent(nil), pkg.installedComponents()...)
+	pkg.Filename, pkg.MD5, pkg.SystemPkgName, pkg.SystemPkgType = "", "", "", ""
+	for len(pkg.Components) > 0 {
+		component := pkg.Components[0]
+		if err := remove(component); err != nil {
+			return fmt.Errorf("remove %s from %s: %w", component.identity(), pkg.GetFullName(), err)
+		}
+		pkg.Components = pkg.Components[1:]
+		pkg.Version = ""
+		pkg.Incomplete = true
+		if len(pkg.Components) > 0 {
+			if err := config.PutPackage(pkg); err != nil {
+				return err
+			}
+		}
+	}
+	delete(config.Packages, pkg.GetFullName())
+	return config.save()
 }
 
 func init() {

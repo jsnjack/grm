@@ -10,6 +10,7 @@ import (
 
 var listRepoDescription bool
 var listFlat bool
+var listLong bool
 
 // listCmd represents the list command
 var listCmd = &cobra.Command{
@@ -52,12 +53,21 @@ var listCmd = &cobra.Command{
 					if p.Locked {
 						lockedStyle = yellow
 					}
+					version := p.Version
+					if p.Incomplete {
+						version += " (incomplete)"
+					}
 					tableRow(
 						padCol(p.GetFullName(), 40, nil),
-						padCol(p.Version, 20, cyan),
+						padCol(version, 20, cyan),
 						padCol(p.GetVerboseLocked(), 20, lockedStyle),
 						strings.Join(p.Filter, ", "),
 					)
+					if listLong {
+						for _, component := range p.installedComponents() {
+							fmt.Printf("    %s (%s)\n", component.identity(), component.Version)
+						}
+					}
 				}
 				return nil
 			}
@@ -70,6 +80,7 @@ var listCmd = &cobra.Command{
 }
 
 func init() {
+	listCmd.Flags().BoolVar(&listLong, "long", false, "Show every installed binary and system package")
 	listCmd.Flags().BoolVar(&listRepoDescription, "description", false, "Print description of the repositories")
 	listCmd.Flags().BoolVarP(&listFlat, "flat", "f", false, "Print installed packages in flat form")
 	rootCmd.AddCommand(listCmd)

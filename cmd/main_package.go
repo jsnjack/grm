@@ -12,13 +12,56 @@ type Package struct {
 	Owner          string
 	Version        string
 	VersionFilter  string // ~= prefix/glob filter; resolved to Version after install
-	MD5            string
+	MD5            string `yaml:"md5,omitempty"`
 	Filter         []string
 	Locked         bool
-	Filename       string
-	RenameBinaryTo string
-	SystemPkgName  string
-	SystemPkgType  string // "deb" or "rpm"
+	Incomplete     bool                 `yaml:"incomplete,omitempty"`
+	Filename       string               `yaml:"filename,omitempty"`
+	RenameBinaryTo string               `yaml:"renamebinaryto,omitempty"`
+	SystemPkgName  string               `yaml:"systempkgname,omitempty"`
+	SystemPkgType  string               `yaml:"systempkgtype,omitempty"` // "deb" or "rpm"
+	Selections     []AssetSelection     `yaml:"selections,omitempty"`
+	Components     []InstalledComponent `yaml:"components,omitempty"`
+}
+
+// AssetSelection remembers an asset pattern and the binaries selected within it.
+type AssetSelection struct {
+	Pattern  string            `yaml:"pattern"`
+	Binaries []BinarySelection `yaml:"binaries,omitempty"`
+}
+
+// BinarySelection identifies an archive member and its optional installed name.
+type BinarySelection struct {
+	Path   string `yaml:"path"`
+	Rename string `yaml:"rename,omitempty"`
+}
+
+// InstalledComponent records one installed binary or system package.
+type InstalledComponent struct {
+	Asset         string `yaml:"asset,omitempty"`
+	Source        string `yaml:"source,omitempty"`
+	Version       string `yaml:"version"`
+	Filename      string `yaml:"filename,omitempty"`
+	MD5           string `yaml:"md5,omitempty"`
+	SystemPkgName string `yaml:"systempkgname,omitempty"`
+	SystemPkgType string `yaml:"systempkgtype,omitempty"`
+}
+
+func (p *Package) installedComponents() []InstalledComponent {
+	if len(p.Components) != 0 {
+		return p.Components
+	}
+	if p.Filename == "" && p.SystemPkgName == "" {
+		return nil
+	}
+	var components []InstalledComponent
+	if p.Filename != "" {
+		components = append(components, InstalledComponent{Version: p.Version, Filename: p.Filename, MD5: p.MD5})
+	}
+	if p.SystemPkgName != "" {
+		components = append(components, InstalledComponent{Version: p.Version, SystemPkgName: p.SystemPkgName, SystemPkgType: p.SystemPkgType})
+	}
+	return components
 }
 
 // GetFullName returns full package name, e.g. jsnjack/kazy-go
@@ -36,24 +79,45 @@ func (p *Package) GetVerboseLocked() string {
 
 // IsSystemPackage returns true if this package was installed via a system package manager
 func (p *Package) IsSystemPackage() bool {
-	return p.SystemPkgName != ""
+	for _, component := range p.installedComponents() {
+		if component.SystemPkgName != "" {
+			return true
+		}
+	}
+	return false
 }
 
 // VerifyVersion verifies that correct package version is installed
 func (p *Package) VerifyVersion(version string) error {
+	if p.Incomplete {
+		return fmt.Errorf("installation of %s is incomplete", p.GetFullName())
+	}
 	if version != p.Version {
 		return fmt.Errorf("installed version %s, want %s", p.Version, version)
 	}
-	if p.Filename != "" {
-		hash, err := tomd5(p.Filename)
-		if err != nil {
-			return fmt.Errorf("verify %s: %w", p.Filename, err)
+	for _, component := range p.installedComponents() {
+		if component.Version != version {
+			return fmt.Errorf("component %s is at %s, want %s", component.identity(), component.Version, version)
 		}
-		if p.MD5 != hash {
-			return fmt.Errorf("installed file hash %s, want %s", p.MD5, hash)
+		if component.Filename == "" {
+			continue
+		}
+		hash, err := tomd5(component.Filename)
+		if err != nil {
+			return fmt.Errorf("verify %s: %w", component.Filename, err)
+		}
+		if component.MD5 != hash {
+			return fmt.Errorf("verify %s: installed file hash %s, want %s", component.Filename, hash, component.MD5)
 		}
 	}
 	return nil
+}
+
+func (c InstalledComponent) identity() string {
+	if c.Filename != "" {
+		return c.Filename
+	}
+	return c.SystemPkgType + ":" + c.SystemPkgName
 }
 
 // CreatePackage creates new Package instance from a string

@@ -9,39 +9,93 @@ import (
 	"strings"
 
 	"github.com/gabriel-vasile/mimetype"
-	"github.com/google/go-github/v32/github"
 )
 
-// Install installs binary from an asset
-func Install(asset *github.ReleaseAsset, pkg *Package) (string, error) {
-	filename, err := downloadFile(asset, pkg)
-	if err != nil {
-		return "", err
-	}
-	slog.Debug("installing", "path", filename)
+type plannedComponent struct {
+	component   InstalledComponent
+	source      string
+	systemFiles []string
+}
 
-	// Route system packages by extension before MIME detection
+func prepareAsset(filename, assetName, tag, binDir string, selection AssetSelection, requests []binaryRequest, legacy *Package) ([]plannedComponent, AssetSelection, error) {
 	ext := strings.ToLower(filepath.Ext(filename))
 	if ext == ".deb" || ext == ".rpm" {
-		return installSystemPackage(filename, pkg)
+		if err := checkSystemPackageSupport(ext); err != nil {
+			return nil, selection, err
+		}
+		name, err := getSystemPackageName(filename)
+		if err != nil {
+			return nil, selection, err
+		}
+		files, err := getSystemPackageFiles(filename)
+		if err != nil {
+			return nil, selection, err
+		}
+		component := InstalledComponent{Asset: assetName, Version: tag, SystemPkgName: name, SystemPkgType: strings.TrimPrefix(ext, ".")}
+		return []plannedComponent{{component: component, source: filename, systemFiles: files}}, selection, nil
 	}
-
 	file, err := os.Open(filename)
 	if err != nil {
-		return "", fmt.Errorf("open %s: %w", filename, err)
+		return nil, selection, fmt.Errorf("open %s: %w", filename, err)
 	}
-	defer logClose(file)
-
 	ct, err := getFileType(file)
+	logClose(file)
 	if err != nil {
-		return "", fmt.Errorf("detect file type of %s: %w", filename, err)
+		return nil, selection, fmt.Errorf("detect file type of %s: %w", filename, err)
 	}
 	slog.Debug("detected file type", "type", ct)
-
-	if isExecutableFileType(ct) {
-		return installBinary(filename, pkg.RenameBinaryTo)
+	var files []fileEntry
+	if isExecutableFileType(ct) && !isLibrary(filepath.Base(filename)) {
+		files = []fileEntry{{relPath: filepath.Base(filename), fullPath: filename, ct: ct, isBinary: true}}
+	} else {
+		dir, err := unpackArchive(filename)
+		if err != nil {
+			return nil, selection, err
+		}
+		files, err = findBinaryFiles(dir)
+		if err != nil {
+			return nil, selection, err
+		}
 	}
-	return installArchive(filename, pkg.RenameBinaryTo)
+	if legacy != nil && legacy.Filename != "" {
+		file := files[0]
+		name := filepath.Base(legacy.Filename)
+		if legacy.RenameBinaryTo == "" {
+			found := false
+			for _, candidate := range files {
+				if matchesPattern(rememberPattern(name, legacy.Version), filepath.Base(candidate.relPath)) {
+					file, found = candidate, true
+					break
+				}
+			}
+			if !found {
+				return nil, selection, fmt.Errorf("previously installed binary %s was not found in %s; use --binary to select again", name, assetName)
+			}
+		}
+		selection.Binaries = []BinarySelection{{Path: file.relPath, Rename: name}}
+	}
+	selected, remembered, err := selectBinaryFiles(files, assetName, selection.Binaries, requests, tag)
+	if err != nil {
+		return nil, selection, err
+	}
+	selection.Binaries = remembered
+	var plan []plannedComponent
+	for i, file := range selected {
+		name := remembered[i].Rename
+		if name == "" {
+			name = filepath.Base(file.fullPath)
+		}
+		if err := validateBinaryName(name); err != nil {
+			return nil, selection, err
+		}
+		hash, err := tomd5(file.fullPath)
+		if err != nil {
+			return nil, selection, err
+		}
+		component := InstalledComponent{Asset: assetName, Source: file.relPath, Version: tag, Filename: filepath.Join(binDir, name), MD5: hash}
+		plan = append(plan, plannedComponent{component: component, source: file.fullPath})
+	}
+	return plan, selection, nil
 }
 
 func getFileType(out io.Reader) (string, error) {

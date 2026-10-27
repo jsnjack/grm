@@ -9,10 +9,10 @@
 
 `grm` is a CLI package manager that installs binaries distributed as GitHub
 Releases (typically Go/Rust tools with no package-manager distribution of
-their own). It inspects a release's assets, picks the one that matches the
-current OS/architecture, downloads and installs it (as a plain binary, an
-archive, or a `.deb`/`.rpm` system package), and tracks what's installed in a
-local YAML config. Several other `jsnjack` tools (`monova`, `mech`,
+their own). It inspects a release's assets, selects files matching the
+current OS/architecture, downloads and installs their selected binaries or
+`.deb`/`.rpm` system packages, and tracks every component in a local YAML
+config. Several other `jsnjack` tools (`monova`, `mech`,
 `sslcheck`, ...) are distributed for installation via `grm`, and `grm` itself
 self-updates via `grm install jsnjack/grm` — so its own release process and
 install UX are load-bearing for other projects.
@@ -32,7 +32,9 @@ cmd/
   main_utils.go                 Shared helpers: download, install/remove binary, GitHub client,
                                  interactive prompts, misc string/hash utils
   install.go                    `install` command; release/asset selection logic
-  install_init.go                Install() — routes a downloaded asset to binary/archive/system-package
+  install_init.go                Prepares downloaded binaries, archives, and system packages
+  install_selection.go           Multi-selection prompts, strict asset/binary selectors, remembered patterns
+  install_plan.go                Plans, validates, and applies component installs; persists partial progress
   install_archive.go             Archive unpacking + binary detection inside an archive
   install_system_package.go      .deb/.rpm install and removal via apt/dnf/dpkg/rpm
   info.go, list.go, lock.go,
@@ -49,16 +51,19 @@ cmd/
 
 1. **Install** (`install.go`): `CreatePackage` parses the `owner/repo` spec →
    `selectRelease` resolves it to a GitHub release (latest, exact tag, or
-   `~=` filter match) → `installRelease` calls `selectAsset` to pick the
-   right asset for the current OS/arch/available package managers →
-   `Install` (`install_init.go`) detects the asset's file type and routes to
-   `installBinary`, `installArchive`, or `installSystemPackage` → the result
-   is persisted via `GrmConfig.PutPackage`.
+   `~=` filter match) → `installRelease` resolves saved selections or prompts
+   for multiple assets (compatible RPMs first) → `prepareAsset` inspects the
+   downloaded contents and selects archive binaries → the complete plan
+   is checked for conflicting destinations and confirmed → each successful
+   binary/system-package operation is persisted. Cleanup belongs to the whole
+   batch. The repository stays incomplete until every selected component is
+   installed and obsolete components are removed.
 2. **Update** (`update.go`): checks all installed packages for newer
    releases concurrently (one goroutine per package), prints a combined
-   status table, asks for one confirmation, then installs updates
-   sequentially (installs need interactive prompts and serialize config
-   writes).
+   status table, asks for confirmation, then prepares and confirms each
+   installation plan sequentially. Installs serialize config writes; failed
+   updates remain incomplete and return a nonzero exit status. Release lookup
+   failures also return a nonzero exit status.
 3. **Config resolution** (`root.go` → `main_config.go`): on every invocation,
    `PersistentPreRunE` calls `resolveConfigFile`, which honors `--config` if
    given, otherwise uses `os.UserConfigDir()/grm/grm.yaml`, falling back to
@@ -124,6 +129,31 @@ that ordering.
   The standard Makefile pattern gitignores the binary name, but this
   project keeps it tracked on purpose; that part of the pattern was not
   applied here.
+- **A repository owns multiple components at one release version.** `Selections`
+  remembers asset patterns and archive member paths/renames; `Components`
+  records each binary's path/hash or each system package's name/type/version.
+  Legacy singular fields remain readable and migrate when installing. New
+  records require the new grm version. Locks apply to the entire repository.
+- **Legacy migration keeps the installed selection.** Without explicit asset,
+  binary, or filter changes, legacy binary installs exclude DEB/RPM candidates
+  and keep one binary at its existing installed name. Renamed legacy archives
+  keep the old first-binary behavior because their source member was not saved.
+  Legacy system packages keep their type and package name. Missing binaries or
+  changed system package names fail before applying the plan. Explicit selectors
+  allow users to expand an old installation.
+- **Selection is remembered rather than recomputed on update.** `--asset` and
+  `--binary` are strict, repeatable selectors. Changing them works at the same
+  release version and replaces the affected selection. Unselected old outputs
+  are listed in the plan and removed only after the new installs succeed.
+- **`--yes` installs all archive binaries on initial selection.** Asset selection
+  still defaults to the first compatible candidate, with RPMs ranked first.
+  Remembered archive subsets stay unchanged on updates, including with `--yes`.
+- **Batch failures persist progress.** An `incomplete` flag prevents same-version
+  partial installs from being reported current. Binary replacements use staged
+  files; config writes use atomic replacement, preserving existing permissions
+  and following config symlinks. Native RPM fallback uses upgrade
+  with `--replacepkgs` so failed batches can be retried. System packages cannot
+  promise whole-batch rollback.
 - **`--version` is a new root flag** (cobra's built-in support, wired via
   `rootCmd.Version`), registered without cobra's default `-v` shorthand so
   it doesn't reclaim the shorthand freed up from removing `--verbose`. The
@@ -135,9 +165,10 @@ that ordering.
 
 - `list -d` no longer means `--description` — it's the global `--debug`
   flag. Use `list --description` (long-form only).
-- `Package` has no `yaml` struct tags, so `yaml.v3`'s default lower-cased
-  field names apply when hand-editing `grm.yaml` (`owner`, `repo`,
-  `version`, ... not `Owner`, `Repo`, `Version`).
+- Config keys are lower-case (`owner`, `repo`, `version`, `selections`,
+  `components`). `list --long` shows every tracked component and its version.
+- A binary selector without `asset-glob::` applies to every selected binary
+  asset. Scope selectors when installing archives with different contents.
 - `resolveConfigFile`'s legacy fallback is checked once per run, at
   startup; there is no automatic migration from the legacy path to the
   XDG one.
