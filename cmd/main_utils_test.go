@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/google/go-github/v93/github"
+	"github.com/schollz/progressbar/v3"
 )
 
 // withGitHubTransport routes all HTTP requests to handler and isolates the
@@ -207,5 +208,20 @@ func TestDownloadFileDoesNotSendTokenToStorage(t *testing.T) {
 	}
 	if len(storageAuth) != 0 {
 		t.Fatalf("storage request Authorization = %q, want none", storageAuth)
+	}
+}
+
+func TestProgressReader(t *testing.T) {
+	data := bytes.Repeat([]byte("grm"), 4096)
+	bar := progressbar.NewOptions(len(data), progressbar.OptionShowBytes(true), progressbar.OptionSetWriter(io.Discard))
+	got, err := io.ReadAll(&ProgressReader{r: bytes.NewReader(data), bar: bar})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, data) {
+		t.Fatalf("read %d bytes, want %d unchanged bytes", len(got), len(data))
+	}
+	if state := bar.State(); state.CurrentNum != int64(len(data)) || state.CurrentPercent != 1 {
+		t.Fatalf("bar at %d (%.2f), want %d (1.00)", state.CurrentNum, state.CurrentPercent, len(data))
 	}
 }

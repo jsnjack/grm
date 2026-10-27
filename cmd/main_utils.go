@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/google/go-github/v93/github"
-	"github.com/schollz/progressbar/v2"
+	"github.com/schollz/progressbar/v3"
 )
 
 // DefaultBinDir is the default location for binary files
@@ -55,7 +55,7 @@ func downloadFile(asset *github.ReleaseAsset, pkg *Package) (string, error) {
 	if isTTY && !rootNoProgress {
 		bar := progressbar.NewOptions(
 			asset.GetSize(),
-			progressbar.OptionSetBytes(asset.GetSize()),
+			progressbar.OptionShowBytes(true),
 		)
 		out = io.MultiWriter(out, bar)
 	}
