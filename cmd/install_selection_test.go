@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/go-github/v32/github"
+	"github.com/google/go-github/v93/github"
 )
 
 func withYes(t *testing.T, yes bool) {
@@ -59,10 +59,10 @@ func TestSelectAssetsRPMPreference(t *testing.T) {
 			}
 			t.Setenv("PATH", dir)
 			assets := []*github.ReleaseAsset{
-				{Name: github.String("bunk_linux_amd64.tar.gz")},
-				{Name: github.String("bunk-gui-0.74.0-1.fc45.x86_64.rpm")},
-				{Name: github.String("bunk-gui-0.74.0-1.fc45.src.rpm")},
-				{Name: github.String("bunk_linux_arm64.tar.gz")},
+				{Name: new("bunk_linux_amd64.tar.gz")},
+				{Name: new("bunk-gui-0.74.0-1.fc45.x86_64.rpm")},
+				{Name: new("bunk-gui-0.74.0-1.fc45.src.rpm")},
+				{Name: new("bunk_linux_arm64.tar.gz")},
 			}
 			got, err := selectAssets(assets, nil)
 			if err != nil || len(got) != 1 {
@@ -81,8 +81,8 @@ func TestSelectAssetsRPMPreference(t *testing.T) {
 
 func TestResolveAssetSelections(t *testing.T) {
 	assets := []*github.ReleaseAsset{
-		{Name: github.String("bunk_1.2.0_linux_amd64.tar.gz")},
-		{Name: github.String("bunk-gui-1.2.0-1.fc45.x86_64.rpm")},
+		{Name: new("bunk_1.2.0_linux_amd64.tar.gz")},
+		{Name: new("bunk-gui-1.2.0-1.fc45.x86_64.rpm")},
 	}
 	cases := []struct {
 		name      string
@@ -112,7 +112,7 @@ func TestResolveAssetSelections(t *testing.T) {
 			if saved[0].Pattern != "bunk_*_linux_amd64.tar.gz" {
 				t.Fatalf("version was not generalized: %+v", saved[0])
 			}
-			next := []*github.ReleaseAsset{{Name: github.String("bunk_1.3.0_linux_amd64.tar.gz")}, {Name: github.String("bunk-gui-1.3.0-1.fc45.x86_64.rpm")}}
+			next := []*github.ReleaseAsset{{Name: new("bunk_1.3.0_linux_amd64.tar.gz")}, {Name: new("bunk-gui-1.3.0-1.fc45.x86_64.rpm")}}
 			if _, _, err := resolveAssetSelections(next, saved, nil, nil, "v1.3.0"); err != nil {
 				t.Fatal(err)
 			}
@@ -206,12 +206,12 @@ func TestPlatformFilteringRetainsMixedArchitectureAliases(t *testing.T) {
 }
 
 func TestExplicitAssetGlobSurvivesRPMBuildChanges(t *testing.T) {
-	assets := []*github.ReleaseAsset{{Name: github.String("bunk-gui-1.2.0-1.gitabcdef0.fc45.x86_64.rpm")}}
+	assets := []*github.ReleaseAsset{{Name: new("bunk-gui-1.2.0-1.gitabcdef0.fc45.x86_64.rpm")}}
 	_, saved, err := resolveAssetSelections(assets, nil, []string{"bunk-gui-*.x86_64.rpm"}, nil, "v1.2.0")
 	if err != nil {
 		t.Fatal(err)
 	}
-	next := []*github.ReleaseAsset{{Name: github.String("bunk-gui-1.3.0-2.git0123456.fc45.x86_64.rpm")}}
+	next := []*github.ReleaseAsset{{Name: new("bunk-gui-1.3.0-2.git0123456.fc45.x86_64.rpm")}}
 	if _, _, err := resolveAssetSelections(next, saved, nil, nil, "v1.3.0"); err != nil {
 		t.Fatalf("explicit glob was narrowed: %v", err)
 	}

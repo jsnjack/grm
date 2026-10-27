@@ -4,12 +4,12 @@ import (
 	"os/exec"
 	"testing"
 
-	"github.com/google/go-github/v32/github"
+	"github.com/google/go-github/v93/github"
 )
 
 func TestSelectAsset_none_suitable(t *testing.T) {
 	assets := []*github.ReleaseAsset{
-		{Name: github.String("app-x86_64.AppImage")},
+		{Name: new("app-x86_64.AppImage")},
 	}
 	_, err := selectAssets(assets, nil)
 	if err == nil {
@@ -22,7 +22,7 @@ func TestSelectAsset_none_suitable(t *testing.T) {
 
 func TestSelectAsset_single_suitable(t *testing.T) {
 	assets := []*github.ReleaseAsset{
-		{Name: github.String("tool-linux-amd64.tar.gz")},
+		{Name: new("tool-linux-amd64.tar.gz")},
 	}
 	got, err := selectAssets(assets, nil)
 	if err != nil {

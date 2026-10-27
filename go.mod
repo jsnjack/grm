@@ -4,11 +4,10 @@ go 1.26.0
 
 require (
 	github.com/gabriel-vasile/mimetype v1.4.16
-	github.com/google/go-github/v32 v32.1.0
+	github.com/google/go-github/v93 v93.0.0
 	github.com/mholt/archives v0.1.5
 	github.com/schollz/progressbar/v2 v2.15.0
 	github.com/spf13/cobra v1.10.2
-	golang.org/x/oauth2 v0.37.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -38,7 +37,6 @@ require (
 	github.com/stretchr/testify v1.12.1 // indirect
 	github.com/ulikunitz/xz v0.5.17 // indirect
 	go4.org v0.0.0-20261019143151-5b882263cdaf // indirect
-	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
