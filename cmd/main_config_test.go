@@ -214,3 +214,69 @@ func TestResolveConfigFile_fallsBackToLegacyPath(t *testing.T) {
 		t.Errorf("expected legacy path %s, got %s", legacyPath, got)
 	}
 }
+
+// TestGrmConfigSaveFormat guards existing config files against formatting
+// changes, such as a YAML library upgrade rewriting every user's config.
+func TestGrmConfigSaveFormat(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "grm.yaml")
+	config := &GrmConfig{path: path, Settings: map[string]string{"token": "abc"}, Packages: map[string]Package{
+		"jsnjack/grm": {Owner: "jsnjack", Repo: "grm", Version: "v1.0.2", Filter: []string{"linux", "~=v1"}, Locked: true,
+			Filename: "/usr/local/bin/grm", MD5: "d41d8cd98f00b204e9800998ecf8427e"},
+		"sxyazi/yazi": {Owner: "sxyazi", Repo: "yazi", Version: "1.10", VersionFilter: "v1.*", Incomplete: true,
+			Selections: []AssetSelection{{Pattern: "yazi-*-x86_64-unknown-linux-gnu.zip", Binaries: []BinarySelection{
+				{Path: "yazi-*/ya"}, {Path: "yazi-*/yazi", Rename: "yes"}}}},
+			Components: []InstalledComponent{
+				{Asset: "yazi-1.10-x86_64-unknown-linux-gnu.zip", Source: "yazi-1.10/ya", Version: "1.10", Filename: "/usr/local/bin/ya", MD5: "0123"},
+				{Asset: "yazi-gui-1.10.x86_64.rpm", Version: "1.10", SystemPkgName: "yazi-gui", SystemPkgType: "rpm"}}},
+	}}
+	if err := config.save(); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != configGolden {
+		t.Fatalf("saved config changed format:\n%s\nwant:\n%s", got, configGolden)
+	}
+}
+
+const configGolden = `packages:
+    jsnjack/grm:
+        repo: grm
+        owner: jsnjack
+        version: v1.0.2
+        versionfilter: ""
+        md5: d41d8cd98f00b204e9800998ecf8427e
+        filter:
+            - linux
+            - ~=v1
+        locked: true
+        filename: /usr/local/bin/grm
+    sxyazi/yazi:
+        repo: yazi
+        owner: sxyazi
+        version: "1.10"
+        versionfilter: v1.*
+        filter: []
+        locked: false
+        incomplete: true
+        selections:
+            - pattern: yazi-*-x86_64-unknown-linux-gnu.zip
+              binaries:
+                - path: yazi-*/ya
+                - path: yazi-*/yazi
+                  rename: "yes"
+        components:
+            - asset: yazi-1.10-x86_64-unknown-linux-gnu.zip
+              source: yazi-1.10/ya
+              version: "1.10"
+              filename: /usr/local/bin/ya
+              md5: "0123"
+            - asset: yazi-gui-1.10.x86_64.rpm
+              version: "1.10"
+              systempkgname: yazi-gui
+              systempkgtype: rpm
+settings:
+    token: abc
+`
