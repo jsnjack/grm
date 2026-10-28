@@ -24,6 +24,29 @@ func removeComponent(component InstalledComponent) error {
 	return removeBinary(component.Filename)
 }
 
+// confirmInstallPlan prints the plan and asks for confirmation only when it
+// removes previously installed components. Installing exactly what was
+// requested proceeds without a prompt, so non-interactive runs keep working.
+func confirmInstallPlan(pkg *Package, tag string, plan []plannedComponent) (bool, error) {
+	msgStep("Installation plan for %s %s", pkg.GetFullName(), tag)
+	wanted := make(map[string]bool)
+	for _, item := range plan {
+		fmt.Printf("    %s -> %s\n", item.component.Asset, item.component.identity())
+		wanted[item.component.identity()] = true
+	}
+	removes := false
+	for _, old := range pkg.installedComponents() {
+		if !wanted[old.identity()] {
+			fmt.Printf("    remove %s\n", old.identity())
+			removes = true
+		}
+	}
+	if !removes {
+		return true, nil
+	}
+	return askForConfirmation("Apply installation plan?")
+}
+
 func validateInstallPlan(plan []plannedComponent, pkg *Package, config *GrmConfig) error {
 	destinations := make(map[string]string)
 	systemFiles := make(map[string]string)
@@ -176,18 +199,7 @@ func installRelease(release *github.RepositoryRelease, pkg *Package, options ins
 			}
 		}
 	}
-	msgStep("Installation plan for %s %s", pkg.GetFullName(), release.GetTagName())
-	wanted := make(map[string]bool)
-	for _, item := range plan {
-		fmt.Printf("    %s -> %s\n", item.component.Asset, item.component.identity())
-		wanted[item.component.identity()] = true
-	}
-	for _, old := range pkg.installedComponents() {
-		if !wanted[old.identity()] {
-			fmt.Printf("    remove %s\n", old.identity())
-		}
-	}
-	confirmed, err := askForConfirmation("Apply installation plan?")
+	confirmed, err := confirmInstallPlan(pkg, release.GetTagName(), plan)
 	if err != nil {
 		return err
 	}

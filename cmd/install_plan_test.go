@@ -3,6 +3,7 @@ package cmd
 import (
 	"archive/zip"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -366,5 +367,29 @@ func TestFailedFirstOperationRemembersIntent(t *testing.T) {
 	saved := config.Packages[pkg.GetFullName()]
 	if !saved.Incomplete || len(saved.Components) != 1 || saved.Components[0].SystemPkgName != "cli" || saved.Selections[0].Pattern != "gui*.rpm" {
 		t.Fatalf("retry intent lost: %+v", saved)
+	}
+}
+
+func TestConfirmInstallPlanPromptsOnlyForRemovals(t *testing.T) {
+	withYes(t, false)
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	logClose(writer)
+	old := os.Stdin
+	os.Stdin = reader
+	t.Cleanup(func() { os.Stdin = old; logClose(reader) })
+
+	plan := []plannedComponent{{component: InstalledComponent{Asset: "grm_linux_amd64.tar.gz", Filename: "/usr/local/bin/grm"}}}
+	pkg := &Package{Owner: "jsnjack", Repo: "grm", Components: []InstalledComponent{{Filename: "/usr/local/bin/grm"}}}
+	confirmed, err := confirmInstallPlan(pkg, "v2", plan)
+	if err != nil || !confirmed {
+		t.Fatalf("plan without removals got %v,%v; want true without prompting", confirmed, err)
+	}
+
+	pkg.Components = append(pkg.Components, InstalledComponent{Filename: "/usr/local/bin/old"})
+	if _, err := confirmInstallPlan(pkg, "v2", plan); !errors.Is(err, io.EOF) {
+		t.Fatalf("plan with removals got %v; want a prompt that reads EOF", err)
 	}
 }

@@ -118,7 +118,9 @@ Passing `--asset` replaces the saved asset selection; passing `--binary`
 replaces the binary selection in the assets it applies to. Changing `--filter`
 starts asset selection again. These flags work even when the release version is
 already installed. The installation plan lists all outputs and any previously
-tracked components that will be removed when the new selection succeeds.
+tracked components that will be removed when the new selection succeeds. grm
+asks for confirmation only when the plan removes components, so an install
+with one suitable asset and one binary runs without prompts.
 
 All components share a repository's release and lock. `update` updates them
 together; `remove` removes every tracked binary and system package. Downloads

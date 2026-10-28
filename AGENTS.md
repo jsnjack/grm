@@ -54,16 +54,18 @@ cmd/
    `~=` filter match) → `installRelease` resolves saved selections or prompts
    for multiple assets (compatible RPMs first) → `prepareAsset` inspects the
    downloaded contents and selects archive binaries → the complete plan
-   is checked for conflicting destinations and confirmed → each successful
+   is checked for conflicting destinations and printed; it asks for
+   confirmation only when it removes old components → each successful
    binary/system-package operation is persisted. Cleanup belongs to the whole
    batch. The repository stays incomplete until every selected component is
    installed and obsolete components are removed.
 2. **Update** (`update.go`): checks all installed packages for newer
    releases concurrently (one goroutine per package), prints a combined
-   status table, asks for confirmation, then prepares and confirms each
-   installation plan sequentially. Installs serialize config writes; failed
-   updates remain incomplete and return a nonzero exit status. Release lookup
-   failures also return a nonzero exit status.
+   status table, asks for confirmation, then prepares and applies each
+   installation plan sequentially (plans that remove components ask again).
+   Installs serialize config writes; failed updates remain incomplete and
+   return a nonzero exit status. Release lookup failures also return a
+   nonzero exit status.
 3. **Config resolution** (`root.go` → `main_config.go`): on every invocation,
    `PersistentPreRunE` calls `resolveConfigFile`, which honors `--config` if
    given, otherwise uses `os.UserConfigDir()/grm/grm.yaml`, falling back to
@@ -168,6 +170,10 @@ that ordering.
 
 ## Gotchas
 
+- `install` must work without a terminal (Ansible runs `grm install` with
+  stdin closed). Only prompt when grm cannot decide: several candidate
+  assets or archive binaries, or a plan that removes components. An
+  unconditional plan confirmation broke this in v2.0.0.
 - `list -d` no longer means `--description` — it's the global `--debug`
   flag. Use `list --description` (long-form only).
 - Config keys are lower-case (`owner`, `repo`, `version`, `selections`,
