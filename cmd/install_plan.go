@@ -152,7 +152,7 @@ func installRelease(release *github.RepositoryRelease, pkg *Package, options ins
 		candidates = legacyAssetCandidates(candidates, pkg)
 		legacyPackage = pkg
 	}
-	assets, selections, err := resolveAssetSelections(candidates, pkg.Selections, options.assets, pkg.Filter, release.GetTagName())
+	assets, selections, err := resolveAssetSelections(candidates, generalizeSelections(pkg.Selections, pkg.Version), options.assets, pkg.Filter, release.GetTagName())
 	if err != nil {
 		return err
 	}

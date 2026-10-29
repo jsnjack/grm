@@ -77,8 +77,27 @@ func rememberPattern(name, tag string) string {
 		if version != "" {
 			name = strings.ReplaceAll(name, version, "*")
 		}
+		// Prefixed tags like selenium-4.41.0 name their assets selenium-server-4.41.0.jar
+		if i := strings.IndexAny(tag, "0123456789"); i > 0 && strings.Contains(tag[i:], ".") {
+			name = strings.ReplaceAll(name, tag[i:], "*")
+		}
 	}
 	return name
+}
+
+// generalizeSelections repairs patterns saved before rememberPattern understood the installed tag.
+func generalizeSelections(selections []AssetSelection, tag string) []AssetSelection {
+	generalized := make([]AssetSelection, len(selections))
+	for i, selection := range selections {
+		selection.Pattern = rememberPattern(selection.Pattern, tag)
+		binaries := append([]BinarySelection(nil), selection.Binaries...)
+		for j := range binaries {
+			binaries[j].Path = rememberPattern(binaries[j].Path, tag)
+		}
+		selection.Binaries = binaries
+		generalized[i] = selection
+	}
+	return generalized
 }
 
 func legacyAssetCandidates(assets []*github.ReleaseAsset, pkg *Package) []*github.ReleaseAsset {
