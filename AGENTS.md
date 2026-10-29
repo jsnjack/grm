@@ -147,6 +147,9 @@ that ordering.
   `--binary` are strict, repeatable selectors. Changing them works at the same
   release version and replaces the affected selection. Unselected old outputs
   are listed in the plan and removed only after the new installs succeed.
+  `--filter` counts as a change only when it differs from the saved filter,
+  because scripts repeat the same install command and expect nothing to happen
+  when the package is current.
 - **`--yes` installs all archive binaries on initial selection.** Asset selection
   still defaults to the first compatible candidate, with RPMs ranked first.
   Remembered archive subsets stay unchanged on updates, including with `--yes`.
