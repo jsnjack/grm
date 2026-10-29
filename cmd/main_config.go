@@ -44,7 +44,8 @@ func resolveConfigFile(override string) (string, error) {
 
 // Settings contains map of all available settings setting/description
 var Settings = map[string]string{
-	"token": "GitHub API token",
+	"token":   "GitHub API token",
+	"bin_dir": "Absolute path of the directory for installed binaries (default " + DefaultBinDir + ")",
 }
 
 // GrmConfig represents grm configuration
@@ -130,8 +131,20 @@ func (g *GrmConfig) PutSetting(key string, value string) error {
 	if !ok {
 		return fmt.Errorf("unknown key: %s", key)
 	}
+	if key == "bin_dir" && value != "" && !filepath.IsAbs(value) {
+		return fmt.Errorf("bin_dir must be an absolute path, got %s", value)
+	}
 	g.Settings[key] = value
 	return g.save()
+}
+
+// BinDir returns the directory for installed binaries: the bin_dir setting
+// when it is set, otherwise DefaultBinDir.
+func (g *GrmConfig) BinDir() string {
+	if dir := g.Settings["bin_dir"]; dir != "" {
+		return dir
+	}
+	return DefaultBinDir
 }
 
 // ReadConfig reads config file

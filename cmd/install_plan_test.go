@@ -2,13 +2,17 @@ package cmd
 
 import (
 	"archive/zip"
+	"bytes"
 	"errors"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/google/go-github/v93/github"
 )
 
 var fixtureBinary = []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
@@ -391,5 +395,52 @@ func TestConfirmInstallPlanPromptsOnlyForRemovals(t *testing.T) {
 	pkg.Components = append(pkg.Components, InstalledComponent{Filename: "/usr/local/bin/old"})
 	if _, err := confirmInstallPlan(pkg, "v2", plan); !errors.Is(err, io.EOF) {
 		t.Fatalf("plan with removals got %v; want a prompt that reads EOF", err)
+	}
+}
+
+func TestInstallReleaseUsesBinDirSetting(t *testing.T) {
+	cases := []struct {
+		name, missing, rename, want string
+	}{
+		{name: "archive binary", want: "tool"},
+		{name: "renamed binary", rename: "my-tool", want: "my-tool"},
+		{name: "missing bin_dir", missing: "new/bin", want: "tool"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			payload, err := os.ReadFile(releaseArchive(t, map[string][]byte{"tools-v1.0.0/tool": fixtureBinary}))
+			if err != nil {
+				t.Fatal(err)
+			}
+			withGitHubTransport(t, func(request *http.Request) (*http.Response, error) {
+				return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": {"application/octet-stream"}}, Body: io.NopCloser(bytes.NewReader(payload)), Request: request}, nil
+			})
+			fakes := t.TempDir()
+			fakeProgram(t, fakes, "sudo", "exit 1")
+			t.Setenv("PATH", fakes+string(os.PathListSeparator)+os.Getenv("PATH"))
+			config, err := ReadConfig(ConfigFile)
+			if err != nil {
+				t.Fatal(err)
+			}
+			binDir := filepath.Join(t.TempDir(), c.missing)
+			if err := config.PutSetting("bin_dir", binDir); err != nil {
+				t.Fatal(err)
+			}
+			release := &github.RepositoryRelease{TagName: "v1.0.0", Assets: []*github.ReleaseAsset{{ID: new(int64(1)), Name: new("tools_v1.0.0_linux_amd64.zip")}}}
+			if err := installRelease(release, &Package{Owner: "owner", Repo: "tools"}, installOptions{rename: c.rename}); err != nil {
+				t.Fatal(err)
+			}
+			installed := filepath.Join(binDir, c.want)
+			if data, err := os.ReadFile(installed); err != nil || !bytes.Equal(data, fixtureBinary) {
+				t.Fatalf("binary was not installed to bin_dir: %v", err)
+			}
+			config, err = ReadConfig(ConfigFile)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if components := config.Packages["owner/tools"].Components; len(components) != 1 || components[0].Filename != installed {
+				t.Errorf("tracked %+v, want one component at %s", components, installed)
+			}
+		})
 	}
 }
