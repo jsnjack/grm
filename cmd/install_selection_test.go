@@ -216,3 +216,18 @@ func TestExplicitAssetGlobSurvivesRPMBuildChanges(t *testing.T) {
 		t.Fatalf("explicit glob was narrowed: %v", err)
 	}
 }
+
+func TestPrefixedTagPatternsSurviveUpdates(t *testing.T) {
+	if got := rememberPattern("selenium-server-4.41.0.jar", "selenium-4.41.0"); got != "selenium-server-*.jar" {
+		t.Fatalf("got %q", got)
+	}
+	saved := generalizeSelections([]AssetSelection{{Pattern: "selenium-server-4.41.0.jar", Binaries: []BinarySelection{{Path: "selenium-server-4.41.0.jar", Rename: "selenium"}}}}, "selenium-4.41.0")
+	if want := []BinarySelection{{Path: "selenium-server-*.jar", Rename: "selenium"}}; !reflect.DeepEqual(saved[0].Binaries, want) {
+		t.Fatalf("got %+v", saved[0].Binaries)
+	}
+	next := []*github.ReleaseAsset{{Name: new("selenium-server-4.51.0.jar")}, {Name: new("selenium-server-4.51.0.zip")}}
+	selected, _, err := resolveAssetSelections(next, saved, nil, nil, "selenium-4.51.0")
+	if err != nil || len(selected) != 1 || selected[0].GetName() != "selenium-server-4.51.0.jar" {
+		t.Fatalf("got %v, %v", selected, err)
+	}
+}
