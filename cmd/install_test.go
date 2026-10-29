@@ -1,7 +1,15 @@
 package cmd
 
 import (
+	"bytes"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/google/go-github/v93/github"
@@ -661,4 +669,86 @@ func stringInSlice(a string, list []string) bool {
 		}
 	}
 	return false
+}
+
+func withInstallFilter(t *testing.T, value string) {
+	t.Helper()
+	t.Cleanup(func() {
+		installFilter = nil
+		installCmd.Flags().Lookup("filter").Changed = false
+	})
+	if err := installCmd.Flags().Set("filter", value); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestInstallReselectsOnlyWhenFilterChanges(t *testing.T) {
+	cases := []struct {
+		name, filter, latest string
+		wantDownloads        int
+		wantBinaries         []string
+	}{
+		{name: "same filter at installed version", filter: "linux", latest: "v1.0.0", wantBinaries: []string{"tool"}},
+		{name: "same filter keeps remembered binaries", filter: "linux", latest: "v2.0.0", wantDownloads: 1, wantBinaries: []string{"tool"}},
+		{name: "changed filter selects again", filter: "zip", latest: "v1.0.0", wantDownloads: 1, wantBinaries: []string{"helper", "tool"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			withYes(t, true)
+			payload, err := os.ReadFile(releaseArchive(t, map[string][]byte{
+				"tools-" + c.latest + "/helper": fixtureBinary,
+				"tools-" + c.latest + "/tool":   fixtureBinary,
+			}))
+			if err != nil {
+				t.Fatal(err)
+			}
+			release := fmt.Sprintf(`{"tag_name":%q,"assets":[{"id":1,"name":"tools_%s_linux_amd64.zip"}]}`, c.latest, c.latest)
+			downloads := 0
+			withGitHubTransport(t, func(request *http.Request) (*http.Response, error) {
+				if strings.HasSuffix(request.URL.Path, "/releases/assets/1") {
+					downloads++
+					return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": {"application/octet-stream"}}, Body: io.NopCloser(bytes.NewReader(payload)), Request: request}, nil
+				}
+				return httpResponse(request, http.StatusOK, []byte(release)), nil
+			})
+			fakes := t.TempDir()
+			fakeProgram(t, fakes, "sudo", `exec "$@"`)
+			for _, program := range []string{"cp", "chmod", "mv", "rm"} {
+				fakeProgram(t, fakes, program, "exit 0")
+			}
+			t.Setenv("PATH", fakes)
+			// The installed binary lives in a temporary directory so VerifyVersion can hash it.
+			installed := filepath.Join(t.TempDir(), "tool")
+			if err := os.WriteFile(installed, fixtureBinary, 0755); err != nil {
+				t.Fatal(err)
+			}
+			config, err := ReadConfig(ConfigFile)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := config.PutPackage(&Package{
+				Owner: "owner", Repo: "tools", Version: "v1.0.0", Filter: []string{"linux"},
+				Selections: []AssetSelection{{Pattern: "tools_*_linux_amd64.zip", Binaries: []BinarySelection{{Path: "tools-*/tool"}}}},
+				Components: []InstalledComponent{{Asset: "tools_v1.0.0_linux_amd64.zip", Source: "tools-v1.0.0/tool", Version: "v1.0.0", Filename: installed}},
+			}); err != nil {
+				t.Fatal(err)
+			}
+			withInstallFilter(t, c.filter)
+			if err := installCmd.RunE(installCmd, []string{"owner/tools"}); err != nil {
+				t.Fatal(err)
+			}
+			config, err = ReadConfig(ConfigFile)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var binaries []string
+			for _, component := range config.Packages["owner/tools"].Components {
+				binaries = append(binaries, filepath.Base(component.Filename))
+			}
+			slices.Sort(binaries)
+			if downloads != c.wantDownloads || !slices.Equal(binaries, c.wantBinaries) {
+				t.Errorf("downloaded %d assets and installed %v, want %d and %v", downloads, binaries, c.wantDownloads, c.wantBinaries)
+			}
+		})
+	}
 }

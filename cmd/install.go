@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 
@@ -81,7 +82,10 @@ Examples:
 				previous.Components = append([]InstalledComponent(nil), previous.Components...)
 				pkg = &previous
 			}
-			if cmd.Flags().Changed("filter") {
+			// Changed only reports that --filter was passed. Repeating the saved
+			// filter keeps the remembered selection, so the command stays idempotent.
+			filterChanged := cmd.Flags().Changed("filter") && !slices.Equal(installFilter, pkg.Filter)
+			if filterChanged {
 				pkg.Filter = installFilter
 				pkg.Selections = nil
 			}
@@ -96,7 +100,7 @@ Examples:
 			if err != nil {
 				return err
 			}
-			options := installOptions{assets: installAssets, binaries: binaries, rename: installRename, lock: installLock, reselect: cmd.Flags().Changed("filter")}
+			options := installOptions{assets: installAssets, binaries: binaries, rename: installRename, lock: installLock, reselect: filterChanged}
 
 			// Check that package is not locked
 			for _, installedItem := range config.Packages {
@@ -115,7 +119,7 @@ Examples:
 			}
 			msgOK("Found release %s", boldCyan(release.GetTagName()))
 
-			if !installRefresh && !installLock && requested.VersionFilter == "" && !cmd.Flags().Changed("asset") && !cmd.Flags().Changed("binary") && !cmd.Flags().Changed("rename") && !cmd.Flags().Changed("filter") {
+			if !installRefresh && !installLock && requested.VersionFilter == "" && !cmd.Flags().Changed("asset") && !cmd.Flags().Changed("binary") && !cmd.Flags().Changed("rename") && !filterChanged {
 				// Check if package of selected release has already been installed
 				for _, installedItem := range config.Packages {
 					if installedItem.GetFullName() == pkg.GetFullName() {
