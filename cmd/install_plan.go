@@ -157,13 +157,14 @@ func installRelease(release *github.RepositoryRelease, pkg *Package, options ins
 		return err
 	}
 	var plan []plannedComponent
+	binDir := config.BinDir()
 	for i, asset := range assets {
 		filename, err := downloadFile(asset, pkg)
 		if err != nil {
 			return err
 		}
 		defer cleanupDownload(filename)
-		items, remembered, err := prepareAsset(filename, asset.GetName(), release.GetTagName(), DefaultBinDir, selections[i], options.binaries, legacyPackage)
+		items, remembered, err := prepareAsset(filename, asset.GetName(), release.GetTagName(), binDir, selections[i], options.binaries, legacyPackage)
 		if err != nil {
 			return fmt.Errorf("prepare %s: %w", asset.GetName(), err)
 		}
@@ -186,7 +187,7 @@ func installRelease(release *github.RepositoryRelease, pkg *Package, options ins
 		if err := validateBinaryName(rename); err != nil {
 			return err
 		}
-		plan[0].component.Filename = filepath.Join(DefaultBinDir, rename)
+		plan[0].component.Filename = filepath.Join(binDir, rename)
 		selections[0].Binaries[0].Rename = rename
 	}
 	if err := validateInstallPlan(plan, pkg, config); err != nil {

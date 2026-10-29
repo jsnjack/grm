@@ -97,8 +97,10 @@ that ordering.
 
 - Config file: YAML at `~/.config/grm/grm.yaml` (or `$XDG_CONFIG_HOME/grm/grm.yaml`
   if set), overridable with `--config`/`-c`. Holds installed packages
-  (`GrmConfig.Packages`) and settings (`GrmConfig.Settings`, currently just
-  `token`).
+  (`GrmConfig.Packages`) and settings (`GrmConfig.Settings`: `token` and
+  `bin_dir`).
+- Binaries install to `GrmConfig.BinDir()`: the `bin_dir` setting when set,
+  otherwise `DefaultBinDir` (`/usr/local/bin/`).
 - GitHub token resolution order: `--token` flag → `settings.token` in the
   config file → `GITHUB_TOKEN` env var → anonymous (rate-limited) client.
 - `--debug`/`-d`: debug-level logs to stderr. `--trace`: trace-level logs to
@@ -159,6 +161,17 @@ that ordering.
   and following config symlinks. Native RPM fallback uses upgrade
   with `--replacepkgs` so failed batches can be retried. System packages cannot
   promise whole-batch rollback.
+- **The binary directory is a setting, and sudo is used only when needed.**
+  `bin_dir` changes where new binary components are installed. Components keep
+  their recorded paths, so existing binaries move only when they are next
+  updated or reinstalled, and the plan lists the old files for removal.
+  Binary copies and removals run through sudo only when the current user cannot
+  create files in the target directory, so a user-owned directory such as
+  `~/.local/bin` needs no sudo and its binaries stay owned by the user. A
+  missing target directory is created with `mkdir -p` before the first copy,
+  and the check uses its nearest existing parent, so a new `~/.local/bin` needs
+  no sudo either. A missing `/usr/local/bin` is created through sudo. System
+  package operations always use `runPrivileged`.
 - **Archive extraction writes only regular files and directories.**
   `unpackArchive` (mholt/archives) skips symlinks and hardlinks and rejects
   absolute entries or entries that escape the extraction directory. It keeps

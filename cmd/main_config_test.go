@@ -93,10 +93,14 @@ func TestGrmConfig_PutSetting(t *testing.T) {
 	cases := []struct {
 		name    string
 		key     string
+		value   string
 		wantErr bool
 	}{
-		{"known key", "token", false},
-		{"unknown key", "bogus", true},
+		{"known key", "token", "value", false},
+		{"unknown key", "bogus", "value", true},
+		{"absolute bin_dir", "bin_dir", "/opt/bin", false},
+		{"empty bin_dir", "bin_dir", "", false},
+		{"relative bin_dir", "bin_dir", "bin", true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -104,12 +108,32 @@ func TestGrmConfig_PutSetting(t *testing.T) {
 			if err != nil {
 				t.Fatalf("setup: %s", err)
 			}
-			err = config.PutSetting(c.key, "value")
+			err = config.PutSetting(c.key, c.value)
 			if c.wantErr && err == nil {
 				t.Errorf("expected error, got nil")
 			}
 			if !c.wantErr && err != nil {
 				t.Errorf("unexpected error: %s", err)
+			}
+		})
+	}
+}
+
+func TestGrmConfig_BinDir(t *testing.T) {
+	cases := []struct {
+		name     string
+		settings map[string]string
+		want     string
+	}{
+		{"unset", map[string]string{}, DefaultBinDir},
+		{"empty", map[string]string{"bin_dir": ""}, DefaultBinDir},
+		{"set", map[string]string{"bin_dir": "/home/user/.local/bin"}, "/home/user/.local/bin"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			config := &GrmConfig{Settings: c.settings}
+			if got := config.BinDir(); got != c.want {
+				t.Errorf("got %q, want %q", got, c.want)
 			}
 		})
 	}

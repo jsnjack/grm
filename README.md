@@ -9,7 +9,7 @@ grm
  - zyedidia/micro
  - ...
 
-`grm` installs selected release binaries to `/usr/local/bin/` and installs RPM/DEB assets through the system package manager. One repository can provide several binaries or a mix of binaries and system packages.
+`grm` installs selected release binaries to `/usr/local/bin/` by default and installs RPM/DEB assets through the system package manager. One repository can provide several binaries or a mix of binaries and system packages.
 
 ### How to use it?
 ```bash
@@ -141,6 +141,19 @@ Migration preserves settings, filters, and locks. New and migrated installs use
 `selections` and `components` records; older grm versions cannot manage these
 records if you downgrade. For new archive selections, `--yes` installs all
 eligible binaries; existing selections stay unchanged.
+
+#### How to install binaries to another directory?
+Set `bin_dir` to an absolute path, for example a directory in your home folder:
+```bash
+grm set bin_dir ~/.local/bin
+```
+
+grm creates the directory if it does not exist. It uses sudo for binary files
+only when the current user cannot write to the directory, or to its nearest
+existing parent when the directory has not been created yet. Binaries that are
+already installed move to the new directory when they are next updated or
+reinstalled with `--refresh`. Set `bin_dir` to an empty value to use
+`/usr/local/bin/` again.
 
 ### Keeping grm up to date
 Once installed, `grm` can update itself:

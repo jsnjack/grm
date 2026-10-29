@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -125,6 +126,65 @@ func TestGetTmpDir(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			if got := getTmpDir(c.path); got != c.want {
 				t.Errorf("getTmpDir(%q) = %q, want %q", c.path, got, c.want)
+			}
+		})
+	}
+}
+
+func TestBinaryOperationsUseSudoOnlyForUnwritableDirectories(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root can write to every directory")
+	}
+	cases := []struct {
+		name     string
+		mode     os.FileMode
+		missing  string
+		wantSudo []string
+	}{
+		{name: "writable directory", mode: 0755},
+		{name: "unwritable directory", mode: 0555, wantSudo: []string{"cp", "chmod", "mv", "rm", "rm"}},
+		{name: "missing directory in writable parent", mode: 0755, missing: "new/bin"},
+		{name: "missing directory in unwritable parent", mode: 0555, missing: "bin", wantSudo: []string{"mkdir", "cp", "chmod", "mv", "rm", "rm"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			fakes := t.TempDir()
+			sudoLog := filepath.Join(fakes, "sudo.log")
+			t.Setenv("GRM_TEST_SUDO_LOG", sudoLog)
+			fakeProgram(t, fakes, "sudo", `echo "$1" >> "$GRM_TEST_SUDO_LOG"`)
+			t.Setenv("PATH", fakes+string(os.PathListSeparator)+os.Getenv("PATH"))
+			source := filepath.Join(t.TempDir(), "tool")
+			if err := os.WriteFile(source, fixtureBinary, 0644); err != nil {
+				t.Fatal(err)
+			}
+			parent := t.TempDir()
+			if err := os.Chmod(parent, c.mode); err != nil {
+				t.Fatal(err)
+			}
+			installed := filepath.Join(parent, c.missing, "tool")
+			if err := installBinaryTo(source, installed); err != nil {
+				t.Fatal(err)
+			}
+			if c.wantSudo == nil {
+				info, err := os.Stat(installed)
+				if err != nil || info.Mode().Perm() != 0755 {
+					t.Fatalf("binary was not installed with mode 0755: %v", err)
+				}
+			}
+			if err := removeBinary(installed); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := os.Stat(installed); !os.IsNotExist(err) {
+				t.Fatalf("binary was not removed: %v", err)
+			}
+			var got []string
+			if data, err := os.ReadFile(sudoLog); err == nil {
+				got = strings.Fields(string(data))
+			} else if !os.IsNotExist(err) {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got, c.wantSudo) {
+				t.Errorf("sudo ran %v, want %v", got, c.wantSudo)
 			}
 		})
 	}
