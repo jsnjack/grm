@@ -86,7 +86,7 @@ settings:
 				t.Fatalf("reading rewrote the old config: %v", err)
 			}
 			fakeProgram(t, dir, "sudo", `exec "$@"`)
-			for _, program := range []string{"cp", "chmod", "mv", "rm", "apt", "dpkg", "dnf"} {
+			for _, program := range []string{"mkdir", "cp", "chmod", "mv", "rm", "apt", "dpkg", "dnf"} {
 				fakeProgram(t, dir, program, "exit 0")
 			}
 			fakeProgram(t, dir, "rpm", `case "$1" in

@@ -713,7 +713,7 @@ func TestInstallReselectsOnlyWhenFilterChanges(t *testing.T) {
 			})
 			fakes := t.TempDir()
 			fakeProgram(t, fakes, "sudo", `exec "$@"`)
-			for _, program := range []string{"cp", "chmod", "mv", "rm"} {
+			for _, program := range []string{"mkdir", "cp", "chmod", "mv", "rm"} {
 				fakeProgram(t, fakes, program, "exit 0")
 			}
 			t.Setenv("PATH", fakes)
