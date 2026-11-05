@@ -82,7 +82,26 @@ func rememberPattern(name, tag string) string {
 			name = strings.ReplaceAll(name, tag[i:], "*")
 		}
 	}
-	return name
+	return generalizeRPMRelease(name)
+}
+
+// generalizeRPMRelease replaces the release field of name-*-release.arch.rpm,
+// because rebuilding for a new distribution changes it (1.fc44 -> 1.fc45).
+func generalizeRPMRelease(name string) string {
+	base, ok := strings.CutSuffix(name, ".rpm")
+	if !ok {
+		return name
+	}
+	dot := strings.LastIndex(base, ".")
+	if dot < 0 {
+		return name
+	}
+	nvr, arch := base[:dot], base[dot:]
+	i := strings.LastIndex(nvr, "-")
+	if i < 0 || nvr[i+1:] == "*" || !strings.HasSuffix(nvr[:i], "-*") {
+		return name
+	}
+	return nvr[:i] + "-*" + arch + ".rpm"
 }
 
 // generalizeSelections repairs patterns saved before rememberPattern understood the installed tag.

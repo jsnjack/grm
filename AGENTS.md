@@ -151,7 +151,9 @@ that ordering.
   are listed in the plan and removed only after the new installs succeed.
   `--filter` counts as a change only when it differs from the saved filter,
   because scripts repeat the same install command and expect nothing to happen
-  when the package is current.
+  when the package is current. Saved patterns replace the version and, for
+  RPMs, the release field (`1.fc44`), because rebuilding a package for a new
+  Fedora version changes that field.
 - **`--yes` installs all archive binaries on initial selection.** Asset selection
   still defaults to the first compatible candidate, with RPMs ranked first.
   Remembered archive subsets stay unchanged on updates, including with `--yes`.

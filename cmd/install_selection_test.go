@@ -231,3 +231,25 @@ func TestPrefixedTagPatternsSurviveUpdates(t *testing.T) {
 		t.Fatalf("got %v, %v", selected, err)
 	}
 }
+
+func TestRememberedRPMPatternsSurviveDistributionChanges(t *testing.T) {
+	cases := map[string]string{
+		"gdiff-*-1.fc44.x86_64.rpm":       "gdiff-*-*.x86_64.rpm",
+		"gdiff-0.176.0-1.fc44.x86_64.rpm": "gdiff-*-*.x86_64.rpm",
+		"bunk-gui-*.x86_64.rpm":           "bunk-gui-*.x86_64.rpm",
+		"tool-0.176.0.x86_64.rpm":         "tool-*.x86_64.rpm",
+		"bunk_*_linux_amd64.tar.gz":       "bunk_*_linux_amd64.tar.gz",
+		"gdiff-0.176.0-1.fc44.src.rpm":    "gdiff-*-*.src.rpm",
+	}
+	for input, want := range cases {
+		if got := rememberPattern(input, "v0.176.0"); got != want {
+			t.Errorf("rememberPattern(%q) = %q, want %q", input, got, want)
+		}
+	}
+	saved := generalizeSelections([]AssetSelection{{Pattern: "gdiff-*-1.fc44.x86_64.rpm"}}, "v0.176.0")
+	next := []*github.ReleaseAsset{{Name: new("gdiff-0.179.0-1.fc45.x86_64.rpm")}, {Name: new("gdiff-0.179.0-linux-amd64.tar.gz")}}
+	selected, _, err := resolveAssetSelections(next, saved, nil, nil, "v0.179.0")
+	if err != nil || len(selected) != 1 || selected[0].GetName() != "gdiff-0.179.0-1.fc45.x86_64.rpm" {
+		t.Fatalf("got %v, %v", selected, err)
+	}
+}
