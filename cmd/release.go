@@ -7,6 +7,7 @@ import (
 	"mime"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/google/go-github/v93/github"
 	"github.com/schollz/progressbar/v3"
@@ -61,9 +62,13 @@ var releaseCmd = &cobra.Command{
 			return fmt.Errorf("get or create release %s for %s: %w", releaseTag, pkg.GetFullName(), err)
 		}
 
+		fmt.Println(pkgLabel(pkg.GetFullName()) + "  " + boldCyan(releaseTag) + "  " + dim(release.GetHTMLURL()))
+		fmt.Println()
+		started := time.Now()
+
 		// Upload assets
 		for _, item := range releaseFilename {
-			msgSync("Uploading %s", bold(item))
+			uploadStarted := time.Now()
 			f, err := os.Open(item)
 			if err != nil {
 				return fmt.Errorf("open %s: %w", item, err)
@@ -79,9 +84,15 @@ var releaseCmd = &cobra.Command{
 				return fmt.Errorf("the asset to upload can't be a directory")
 			}
 
+			label := "  " + dim(sUp) + " " + item
 			bar := progressbar.NewOptions64(
 				stat.Size(),
+				progressbar.OptionSetDescription(label),
+				progressbar.OptionSetWidth(24),
 				progressbar.OptionShowBytes(true),
+				progressbar.OptionClearOnFinish(),
+				progressbar.OptionSetTheme(progressbar.Theme{Saucer: "━", SaucerPadding: "─"}),
+				progressbar.OptionSetVisibility(isTTY),
 			)
 
 			reader := &ProgressReader{
@@ -107,9 +118,11 @@ var releaseCmd = &cobra.Command{
 			if _, err := client.Do(req, asset); err != nil {
 				return fmt.Errorf("upload %s: %w", item, err)
 			}
-			msgOK("Uploaded")
+			fmt.Printf("    %s %s  %s\n", green(sCheck), item, dim(joinDetails(formatSize(int(stat.Size())), formatDuration(time.Since(uploadStarted)))))
 		}
 
+		fmt.Println()
+		msgResult(true, "Released %s %s %s", bold(pkg.Repo), boldCyan(releaseTag), dim(joinDetails(plural(len(releaseFilename), "asset", "assets"), formatDuration(time.Since(started)))))
 		return nil
 	},
 }

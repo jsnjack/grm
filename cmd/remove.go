@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -37,19 +39,47 @@ var removeCmd = &cobra.Command{
 				continue
 			}
 			if pkg.Locked {
-				msgLocked("%s is %s", bold(pkg.GetFullName()), yellow("locked"))
+				msgLocked("%s is locked at %s %s", pkgLabel(pkg.GetFullName()), cyan(pkg.Version), dim(sDot+" grm unlock "+item+" allows removal"))
 				continue
 			}
-			ok, err := askForConfirmation(fmt.Sprintf("Are you sure you want to remove %s?", bold(item)))
+			started := time.Now()
+			fmt.Println(pkgLabel(pkg.GetFullName()) + "  " + cyan(pkg.Version))
+			fmt.Println()
+			var rows [][]string
+			binaries, packages := 0, 0
+			for _, c := range pkg.installedComponents() {
+				rows = append(rows, []string{red(sRemove) + " " + red(componentName(c)) + componentKind(c), dim(componentTarget(c))})
+				if c.SystemPkgName != "" {
+					packages++
+				} else {
+					binaries++
+				}
+			}
+			printTable("    ", nil, rows)
+			fmt.Println()
+			var what []string
+			if binaries > 0 {
+				what = append(what, plural(binaries, "file", "files"))
+			}
+			if packages > 0 {
+				what = append(what, plural(packages, "system package", "system packages"))
+			}
+			question := "Remove " + strings.Join(what, " and ") + "?"
+			if len(what) == 0 {
+				question = "Forget " + item + "?"
+			}
+			ok, err := askForConfirmation(question, false)
 			if err != nil {
 				return err
 			}
 			if !ok {
+				msgResult(true, "Nothing removed")
 				return nil
 			}
 			if err := removeInstalledPackage(config, &pkg, removeComponent); err != nil {
 				return err
 			}
+			msgResult(true, "Removed %s %s", pkgLabel(pkg.GetFullName()), dim(sDot+" "+joinDetails(plural(binaries+packages, "component", "components"), formatDuration(time.Since(started)))))
 		}
 		return config.save()
 	},

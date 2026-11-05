@@ -3,7 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"strconv"
+	"strings"
 
 	"github.com/google/go-github/v93/github"
 	"github.com/spf13/cobra"
@@ -33,56 +33,89 @@ var infoCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		config, err := ReadConfig(ConfigFile)
+		if err != nil {
+			return err
+		}
+		installed, isInstalled := config.Packages[pkg.GetFullName()]
 		if infoAll {
-			opt := &github.ListOptions{}
-			releases, _, err := client.Repositories.ListReleases(context.Background(), pkg.Owner, pkg.Repo, opt)
+			releases, _, err := client.Repositories.ListReleases(context.Background(), pkg.Owner, pkg.Repo, &github.ListOptions{})
 			if err != nil {
 				return fmt.Errorf("list releases for %s: %w", pkg.GetFullName(), err)
 			}
-			tableHeader([]int{15, 15, 15}, []string{"Version", "Published", "Downloads", "URL"})
-			for _, item := range releases {
-				printReleaseInfo(item)
+			fmt.Println(pkgLabel(pkg.GetFullName()) + "  " + dim(plural(len(releases), "release", "releases")))
+			fmt.Println()
+			var rows [][]string
+			for i, release := range releases {
+				var downloads int
+				for _, item := range release.Assets {
+					downloads += item.GetDownloadCount()
+				}
+				version, note := cyan(release.GetTagName()), ""
+				if i == 0 {
+					version, note = boldCyan(release.GetTagName()), dim("latest")
+				}
+				if isInstalled && installed.Version == release.GetTagName() {
+					note = joinDetails(note, green(sLocked+" installed"))
+				}
+				rows = append(rows, []string{version, release.GetPublishedAt().Format("2006-01-02"), fmt.Sprintf("%8d", downloads), note})
+			}
+			printTable("  ", []string{"VERSION", "RELEASED", "DOWNLOADS", ""}, rows)
+			return nil
+		}
+		release, err := selectRelease(pkg)
+		if err != nil {
+			return err
+		}
+		fmt.Println(pkgLabel(pkg.GetFullName()) + "  " + boldCyan(release.GetTagName()) + "  " + dim("released "+release.GetPublishedAt().Format("2006-01-02")))
+		fmt.Println(dim(release.GetHTMLURL()))
+		fmt.Println()
+		var selections []AssetSelection
+		var facts [][]string
+		if isInstalled {
+			state := green("up to date")
+			if installed.VerifyVersion(release.GetTagName()) != nil {
+				state = yellow("update available") + dim(" "+sDot+" grm update "+pkg.GetFullName())
+			}
+			if installed.Locked {
+				state = yellow(sLocked + " locked")
+			}
+			facts = append(facts, []string{dim("Installed"), cyan(installed.Version) + "  " + state})
+			selections = generalizeSelections(installed.Selections, installed.Version)
+			var patterns []string
+			for _, selection := range selections {
+				patterns = append(patterns, selection.Pattern)
+			}
+			if len(patterns) > 0 {
+				facts = append(facts, []string{dim("Selection"), strings.Join(patterns, ", ")})
+			}
+			if len(installed.Filter) > 0 {
+				facts = append(facts, []string{dim("Filter"), strings.Join(installed.Filter, ", ")})
 			}
 		} else {
-			release, err := selectRelease(pkg)
-			if err != nil {
-				return err
+			facts = append(facts, []string{dim("Installed"), dim("no " + sDot + " grm install " + pkg.GetFullName())})
+		}
+		printTable("  ", nil, facts)
+		fmt.Println()
+		var rows [][]string
+		for _, item := range release.Assets {
+			marker, note := "  ", ""
+			for _, selection := range selections {
+				if matchesPattern(selection.Pattern, item.GetName()) {
+					marker, note = cyan(sSelect)+" ", cyan("selected")
+				}
 			}
-			if !infoLong {
-				fmt.Println(boldCyan(release.GetTagName()))
-				for _, item := range release.Assets {
-					fmt.Printf("  %s %s\n", dim(sTriang), item.GetName())
-				}
-			} else {
-				tableRow(padCol("Version", 20, bold), cyan(release.GetTagName()))
-				tableRow(padCol("Published", 20, bold), release.GetPublishedAt().Format("2006-01-02"))
-				tableRow(padCol("URL", 20, bold), release.GetHTMLURL())
-				fmt.Printf("  %s\n", bold("Assets:"))
-				for _, item := range release.Assets {
-					fmt.Printf("    %s %s\n", cyan(sTriang), bold(item.GetName()))
-					fmt.Printf("      %s %s\n", padCol("Type", 20, dim), item.GetContentType())
-					fmt.Printf("      %s %s\n", padCol("Downloads", 20, dim), strconv.Itoa(item.GetDownloadCount()))
-					fmt.Printf("      %s %s\n", padCol("Download URL", 20, dim), item.GetBrowserDownloadURL())
-					fmt.Printf("      %s %s\n", padCol("Size", 20, dim), strconv.Itoa(item.GetSize()/1024/1024)+"MB")
-					fmt.Println()
-				}
+			rows = append(rows, []string{marker + item.GetName(), dim(assetKind(item.GetName())), formatSize(item.GetSize()), fmt.Sprintf("%9d", item.GetDownloadCount()), note})
+		}
+		printTable("  ", []string{"  ASSET", "TYPE", "SIZE", "DOWNLOADS", ""}, rows)
+		if infoLong {
+			msgSection("Download URLs", "")
+			for _, item := range release.Assets {
+				fmt.Printf("    %s\n", item.GetBrowserDownloadURL())
 			}
 		}
 		return nil
 	},
-}
-
-func printReleaseInfo(release *github.RepositoryRelease) {
-	var downloads int
-	for _, item := range release.Assets {
-		downloads += item.GetDownloadCount()
-	}
-	tableRow(
-		padCol(release.GetTagName(), 15, cyan),
-		padCol(release.GetPublishedAt().Format("2006-01-02"), 15, dim),
-		padCol(strconv.Itoa(downloads), 15, nil),
-		dim(release.GetHTMLURL()),
-	)
 }
 
 func init() {

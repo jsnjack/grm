@@ -31,7 +31,11 @@ var setTokenCmd = &cobra.Command{
 		}
 		err = config.PutSetting(args[0], args[1])
 		if err == nil {
-			msgOK("ok")
+			value := args[1]
+			if args[0] == "token" {
+				value = maskToken(value)
+			}
+			msgOK("Set %s to %s", bold(args[0]), value)
 		}
 		return err
 	},

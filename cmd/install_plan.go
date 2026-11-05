@@ -1,8 +1,12 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/google/go-github/v93/github"
 )
@@ -28,23 +32,101 @@ func removeComponent(component InstalledComponent) error {
 // removes previously installed components. Installing exactly what was
 // requested proceeds without a prompt, so non-interactive runs keep working.
 func confirmInstallPlan(pkg *Package, tag string, plan []plannedComponent) (bool, error) {
-	msgStep("Installation plan for %s %s", pkg.GetFullName(), tag)
-	wanted := make(map[string]bool)
-	for _, item := range plan {
-		fmt.Printf("    %s -> %s\n", item.component.Asset, item.component.identity())
-		wanted[item.component.identity()] = true
+	installed := make(map[string]InstalledComponent)
+	for _, old := range pkg.installedComponents() {
+		installed[old.identity()] = old
 	}
-	removes := false
+	wanted := make(map[string]bool)
+	var rows [][]string
+	for _, item := range plan {
+		component := item.component
+		wanted[component.identity()] = true
+		symbol, change := green(sAdd), ""
+		if old, ok := installed[component.identity()]; ok {
+			symbol, change = cyan(sUp), "reinstall"
+			if old.Version != "" && old.Version != tag {
+				change = old.Version + " " + sArrow + " " + tag
+			}
+		}
+		rows = append(rows, []string{symbol + " " + componentLabel(component), change, dim(componentTarget(component))})
+	}
+	removals := 0
 	for _, old := range pkg.installedComponents() {
 		if !wanted[old.identity()] {
-			fmt.Printf("    remove %s\n", old.identity())
-			removes = true
+			rows = append(rows, []string{red(sRemove) + " " + red(componentName(old)) + componentKind(old), "", dim(componentTarget(old) + " " + sDot + " no longer selected")})
+			removals++
 		}
 	}
-	if !removes {
+	msgSection("Plan", "")
+	printTable("    ", nil, dropEmptyColumns(rows))
+	if removals == 0 {
 		return true, nil
 	}
-	return askForConfirmation("Apply installation plan?")
+	fmt.Println()
+	ok, err := askForConfirmation(fmt.Sprintf("Remove %s and apply the plan?", plural(removals, "component", "components")), false)
+	if err == nil && !ok {
+		msgResult(false, "Nothing changed %s", dim(sDot+" plan cancelled"))
+	}
+	return ok, err
+}
+
+func componentName(c InstalledComponent) string {
+	if c.SystemPkgName != "" {
+		return c.SystemPkgName
+	}
+	return filepath.Base(c.Filename)
+}
+
+func componentKind(c InstalledComponent) string {
+	if c.SystemPkgName != "" {
+		return " " + dim(c.SystemPkgType)
+	}
+	return ""
+}
+
+func componentLabel(c InstalledComponent) string {
+	return green(componentName(c)) + componentKind(c)
+}
+
+// componentTarget says where a component goes and whether that needs sudo.
+func componentTarget(c InstalledComponent) string {
+	if c.SystemPkgName != "" {
+		target := systemPackageTool(c.SystemPkgType)
+		if os.Geteuid() != 0 {
+			target += " " + sDot + " needs sudo"
+		}
+		return target
+	}
+	if !isWritableDir(existingDir(filepath.Dir(c.Filename))) {
+		return c.Filename + " " + sDot + " needs sudo"
+	}
+	return c.Filename
+}
+
+func componentWhere(c InstalledComponent) string {
+	if c.SystemPkgName != "" {
+		return c.Version
+	}
+	return c.Filename
+}
+
+func countComponents(plan []plannedComponent) string {
+	binaries, packages := 0, 0
+	for _, item := range plan {
+		if item.component.SystemPkgName != "" {
+			packages++
+		} else {
+			binaries++
+		}
+	}
+	var parts []string
+	if binaries > 0 {
+		parts = append(parts, plural(binaries, "binary", "binaries"))
+	}
+	if packages > 0 {
+		parts = append(parts, plural(packages, "system package", "system packages"))
+	}
+	return strings.Join(parts, ", ")
 }
 
 func validateInstallPlan(plan []plannedComponent, pkg *Package, config *GrmConfig) error {
@@ -103,8 +185,10 @@ func applyInstallPlan(config *GrmConfig, pkg *Package, tag string, plan []planne
 			err = operations.binary(item.source, component.Filename)
 		}
 		if err != nil {
+			fmt.Printf("    %s %s\n", red(sCross), componentLabel(component))
 			return fmt.Errorf("install %s from %s (completed components remain tracked): %w", component.identity(), component.Asset, err)
 		}
+		fmt.Printf("    %s %s  %s\n", green(sCheck), componentLabel(component), dim(componentWhere(component)))
 		wanted[component.identity()] = true
 		replaced := false
 		for i := range pkg.Components {
@@ -129,6 +213,7 @@ func applyInstallPlan(config *GrmConfig, pkg *Package, tag string, plan []planne
 		if err := operations.remove(component); err != nil {
 			return fmt.Errorf("remove obsolete component %s: %w", component.identity(), err)
 		}
+		fmt.Printf("    %s %s  %s\n", red(sRemove), red(componentName(component))+componentKind(component), dim("removed"))
 		pkg.Components = append(pkg.Components[:i], pkg.Components[i+1:]...)
 		if err := config.PutPackage(pkg); err != nil {
 			return err
@@ -144,7 +229,23 @@ func installRelease(release *github.RepositoryRelease, pkg *Package, options ins
 	if err != nil {
 		return err
 	}
-	msgStep("Inspecting assets...")
+	started := time.Now()
+	previous := ""
+	if len(pkg.installedComponents()) > 0 {
+		previous = pkg.Version
+	}
+	header := pkgLabel(pkg.GetFullName()) + "  " + versionChange(previous, release.GetTagName())
+	var details []string
+	if !release.GetPublishedAt().IsZero() {
+		details = append(details, "released "+release.GetPublishedAt().Format("2006-01-02"))
+	}
+	if previous == "" {
+		details = append(details, "new install")
+	}
+	if len(details) > 0 {
+		header += "  " + dim(strings.Join(details, " "+sDot+" "))
+	}
+	fmt.Println(header)
 	legacy := len(pkg.Selections) == 0 && len(pkg.Components) == 0 && (pkg.Filename != "" || pkg.SystemPkgName != "") && len(options.assets) == 0 && len(options.binaries) == 0 && !options.reselect
 	candidates := release.Assets
 	var legacyPackage *Package
@@ -152,9 +253,24 @@ func installRelease(release *github.RepositoryRelease, pkg *Package, options ins
 		candidates = legacyAssetCandidates(candidates, pkg)
 		legacyPackage = pkg
 	}
-	assets, selections, err := resolveAssetSelections(candidates, generalizeSelections(pkg.Selections, pkg.Version), options.assets, pkg.Filter, release.GetTagName())
+	saved := generalizeSelections(pkg.Selections, pkg.Version)
+	assets, selections, err := resolveAssetSelections(candidates, saved, options.assets, pkg.Filter, release.GetTagName())
 	if err != nil {
+		var hinted *hintedError
+		if errors.As(err, &hinted) && hinted.fix == "" {
+			hinted.fix = fmt.Sprintf("grm install %s --asset '<asset name or glob>'", pkg.GetFullName())
+		}
 		return err
+	}
+	fmt.Println()
+	if len(options.assets) != 0 || len(saved) != 0 {
+		reason := "saved selection"
+		if len(options.assets) != 0 {
+			reason = "--asset"
+		}
+		for i, asset := range assets {
+			fmt.Printf("  %s   %s %s  %s\n", dim("Asset"), cyan(sSelect), asset.GetName(), dim(joinDetails(formatSize(asset.GetSize()), reason+" "+selections[i].Pattern)))
+		}
 	}
 	var plan []plannedComponent
 	binDir := config.BinDir()
@@ -218,6 +334,14 @@ func installRelease(release *github.RepositoryRelease, pkg *Package, options ins
 			return err
 		}
 	}
-	msgDone()
+	verb := "Installed"
+	switch {
+	case previous == release.GetTagName():
+		verb = "Reinstalled"
+	case previous != "":
+		verb = "Updated"
+	}
+	fmt.Println()
+	msgResult(true, "%s %s %s %s", verb, bold(pkg.Repo), boldCyan(release.GetTagName()), dim(sDot+" "+joinDetails(countComponents(plan), formatDuration(time.Since(started)))))
 	return nil
 }

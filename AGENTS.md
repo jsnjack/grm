@@ -42,7 +42,8 @@ cmd/
   settings.go, update.go,
   release.go, version.go,
   aliases.go                    One file per subcommand
-  styles.go                     Terminal color/table helpers
+  styles.go                     Output layout: symbols, colors, aligned tables, prompts,
+                                 result lines, and error blocks with a Fix line
 ```
 
 ---
@@ -179,6 +180,21 @@ that ordering.
   absolute entries or entries that escape the extraction directory. It keeps
   the archive layout without stripping a top-level folder, so remembered
   `--binary` member paths stay valid.
+- **Every command uses one output layout** (`styles.go`). The first line names
+  the package and the version change, and only the changed part of the new
+  version is bold. Sections are indented under a dim title. The last line starts
+  with ✓ or ✗ and matches the exit status. Each symbol has one meaning: ✓ done,
+  ✗ failed, ↑ upgrade, + add, − remove, ● locked, ! warning, ? question,
+  › selected. Tables align styled cells by visible width (`printTable`), so
+  never pad strings that contain ANSI codes with `%-*s`.
+- **Errors go to stderr as a block.** `hintedError` carries the data grm compared
+  and a Fix command; `printError` also adds fixes for GitHub rate limits, 401 and
+  404 responses. A command that has already reported its failures returns
+  `silentError` to set the exit status without printing them again.
+- **Prompts show their default and accept Enter.** Removing components defaults
+  to No, and updating defaults to Yes. A closed stdin still fails the prompt
+  instead of using the default, so Ansible runs never remove files by accident.
+- **`grm settings` masks the token** and shows where each value comes from.
 - **`--version` is a new root flag** (cobra's built-in support, wired via
   `rootCmd.Version`), registered without cobra's default `-v` shorthand so
   it doesn't reclaim the shorthand freed up from removing `--verbose`. The
@@ -192,6 +208,8 @@ that ordering.
   stdin closed). Only prompt when grm cannot decide: several candidate
   assets or archive binaries, or a plan that removes components. An
   unconditional plan confirmation broke this in v2.0.0.
+- Human-readable output is not a stable interface. Scripts should use
+  `list --flat` or read the YAML config.
 - `list -d` no longer means `--description` — it's the global `--debug`
   flag. Use `list --description` (long-form only).
 - Config keys are lower-case (`owner`, `repo`, `version`, `selections`,

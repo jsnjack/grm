@@ -122,25 +122,6 @@ func TestPackage_GetFullName(t *testing.T) {
 	}
 }
 
-func TestPackage_GetVerboseLocked(t *testing.T) {
-	cases := []struct {
-		name   string
-		locked bool
-		want   string
-	}{
-		{"locked", true, "yes"},
-		{"unlocked", false, ""},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			p := Package{Locked: c.locked}
-			if got := p.GetVerboseLocked(); got != c.want {
-				t.Errorf("got %q, want %q", got, c.want)
-			}
-		})
-	}
-}
-
 func TestPackage_IsSystemPackage_false_when_no_name(t *testing.T) {
 	p := Package{Filename: "/usr/local/bin/tool"}
 	if p.IsSystemPackage() {

@@ -69,14 +69,6 @@ func (p *Package) GetFullName() string {
 	return p.Owner + "/" + p.Repo
 }
 
-// GetVerboseLocked returns print-friendly value
-func (p *Package) GetVerboseLocked() string {
-	if p.Locked {
-		return "yes"
-	}
-	return ""
-}
-
 // IsSystemPackage returns true if this package was installed via a system package manager
 func (p *Package) IsSystemPackage() bool {
 	for _, component := range p.installedComponents() {

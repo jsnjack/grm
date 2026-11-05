@@ -12,29 +12,41 @@ import (
 	"strings"
 )
 
+// systemPackageTool names the program that installs a system package type.
+func systemPackageTool(pkgType string) string {
+	switch pkgType {
+	case "deb":
+		if _, err := exec.LookPath("apt"); err == nil {
+			return "apt"
+		}
+		return "dpkg"
+	case "rpm":
+		if _, err := exec.LookPath("dnf"); err == nil {
+			return "dnf"
+		}
+		return "rpm"
+	}
+	return pkgType
+}
+
 func installSystemPackage(filename string) error {
 	ext := strings.ToLower(filepath.Ext(filename))
 
-	var program string
 	var args []string
-	switch ext {
-	case ".deb":
-		if _, err := exec.LookPath("apt"); err == nil {
-			program, args = "apt", []string{"install", "-y", filename}
-		} else {
-			program, args = "dpkg", []string{"-i", filename}
-		}
-	case ".rpm":
-		if _, err := exec.LookPath("dnf"); err == nil {
-			program, args = "dnf", []string{"install", "-y", filename}
-		} else {
-			program, args = "rpm", []string{"-U", "--replacepkgs", filename}
-		}
+	program := systemPackageTool(strings.TrimPrefix(ext, "."))
+	switch program {
+	case "apt":
+		args = []string{"install", "-y", filename}
+	case "dpkg":
+		args = []string{"-i", filename}
+	case "dnf":
+		args = []string{"install", "-y", filename}
+	case "rpm":
+		args = []string{"-U", "--replacepkgs", filename}
 	default:
 		return fmt.Errorf("unsupported system package extension: %s", ext)
 	}
 
-	msgStep("Installing system package %s", bold(filepath.Base(filename)))
 	if err := runPrivileged(program, args...); err != nil {
 		return fmt.Errorf("install %s: %w", filename, err)
 	}

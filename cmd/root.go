@@ -45,7 +45,7 @@ var rootCmd = &cobra.Command{
 func Execute() {
 	defer loggerCleanup()
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		printError(os.Stderr, err)
 		os.Exit(1)
 	}
 }
@@ -62,6 +62,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&rootConfigFile, "config", "c", "", "Path to the config file (default ~/.config/grm/grm.yaml)")
 	rootCmd.PersistentFlags().BoolVar(&rootNoProgress, "no-progress", false, "Disable progress bar")
 
+	rootCmd.SilenceErrors = true
 	rootCmd.Version = Version
 	rootCmd.SetVersionTemplate("{{.Version}}\n")
 	// Registered explicitly (no shorthand) so cobra doesn't claim the -v

@@ -187,7 +187,7 @@ func TestInteractiveSelections(t *testing.T) {
 	}
 	logClose(writer)
 	for i, want := range [][]int{{1, 3}, {2, 3}} {
-		got, err := askForNumbers("Choose:", 3, false)
+		got, err := askForNumbers("Choose:", 3, "1")
 		if err != nil || !reflect.DeepEqual(got, want) {
 			t.Fatalf("prompt %d got %v,%v; want %v", i, got, err, want)
 		}

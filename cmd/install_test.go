@@ -23,7 +23,7 @@ func TestSelectAsset_none_suitable(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
-	if err.Error() != "supported asset not found" {
+	if !strings.HasPrefix(err.Error(), "no asset matches ") {
 		t.Errorf("unexpected error: %s", err)
 	}
 }

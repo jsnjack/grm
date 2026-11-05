@@ -53,30 +53,49 @@ func downloadFile(asset *github.ReleaseAsset, pkg *Package) (string, error) {
 	out = f
 	defer logClose(f)
 
+	started := time.Now()
+	label := "  " + dim(sDown) + " " + asset.GetName()
 	if isTTY && !rootNoProgress {
 		bar := progressbar.NewOptions(
 			asset.GetSize(),
+			progressbar.OptionSetDescription(label),
+			progressbar.OptionSetWidth(24),
 			progressbar.OptionShowBytes(true),
+			progressbar.OptionClearOnFinish(),
+			progressbar.OptionSetTheme(progressbar.Theme{Saucer: "━", SaucerPadding: "─"}),
 		)
 		out = io.MultiWriter(out, bar)
 	}
 	if _, err := io.Copy(out, reader); err != nil {
 		return "", fmt.Errorf("write %s: %w", destination, err)
 	}
-	if isTTY && !rootNoProgress {
-		fmt.Println()
-	}
+	fmt.Printf("%s  %s\n", label, dim(joinDetails(formatSize(asset.GetSize()), formatDuration(time.Since(started)))))
 	return destination, nil
 }
 
+// runPrivileged runs a program through sudo when grm is not root. System
+// package commands are echoed dim first, so the user knows what asks for a
+// password.
 func runPrivileged(program string, args ...string) error {
+	echo := isSystemPackageTool(program)
 	if os.Geteuid() != 0 {
 		if _, err := exec.LookPath("sudo"); err == nil {
 			args = append([]string{program}, args...)
 			program = "sudo"
 		}
 	}
+	if echo {
+		fmt.Printf("    %s\n", dim("$ "+program+" "+strings.Join(args, " ")))
+	}
 	return runCommand(program, args...)
+}
+
+func isSystemPackageTool(program string) bool {
+	switch program {
+	case "apt", "dpkg", "dnf", "rpm":
+		return true
+	}
+	return false
 }
 
 func runCommand(program string, args ...string) error {
@@ -127,7 +146,6 @@ func isWritableDir(dir string) bool {
 }
 
 func installBinaryTo(filename, installedFile string) error {
-	msgStep("Installing %s %s %s", bold(filename), cyan(sArrow), bold(installedFile))
 	dir := filepath.Dir(installedFile)
 	run := binaryRunner(dir)
 	if existingDir(dir) != dir {
@@ -209,26 +227,30 @@ func generateRandomString(n int) string {
 	return string(b)
 }
 
-// askForConfirmation prompts for a yes/no answer. If --yes was passed, it
+// askForConfirmation asks a yes/no question. The default answer is shown in
+// capitals and used when the user presses Enter. If --yes was passed, it
 // returns true without prompting.
-func askForConfirmation(msg string) (bool, error) {
+func askForConfirmation(msg string, defaultYes bool) (bool, error) {
 	if rootYes {
 		return true, nil
 	}
-	fmt.Print(msg + " " + dim("[y/n]") + " ")
-	var response string
-	if _, err := fmt.Scanln(&response); err != nil {
-		return false, fmt.Errorf("read response: %w", err)
+	hint, def := "[y/N]", "n"
+	if defaultYes {
+		hint, def = "[Y/n]", "y"
 	}
-	okayResponses := []string{"y", "Y", "yes", "Yes", "YES"}
-	nokayResponses := []string{"n", "N", "no", "No", "NO"}
-	if containsString(okayResponses, response) {
-		return true, nil
-	} else if containsString(nokayResponses, response) {
-		return false, nil
+	for {
+		response, err := readAnswer(msg, hint, def)
+		if err != nil {
+			return false, err
+		}
+		switch strings.ToLower(response) {
+		case "y", "yes":
+			return true, nil
+		case "n", "no":
+			return false, nil
+		}
+		msgWarn("Type y or n, then press Enter")
 	}
-	fmt.Println("  Please type yes or no and then press enter:")
-	return askForConfirmation(msg)
 }
 
 // posString returns the first index of element in slice.
@@ -240,11 +262,6 @@ func posString(slice []string, element string) int {
 		}
 	}
 	return -1
-}
-
-// containsString returns true iff slice contains element
-func containsString(slice []string, element string) bool {
-	return posString(slice, element) != -1
 }
 
 // ProgressReader is a reader that prints progress

@@ -71,25 +71,6 @@ func TestPosString(t *testing.T) {
 	}
 }
 
-func TestContainsString(t *testing.T) {
-	cases := []struct {
-		name    string
-		slice   []string
-		element string
-		want    bool
-	}{
-		{"present", []string{"y", "yes"}, "yes", true},
-		{"absent", []string{"y", "yes"}, "no", false},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			if got := containsString(c.slice, c.element); got != c.want {
-				t.Errorf("containsString(%v, %q) = %v, want %v", c.slice, c.element, got, c.want)
-			}
-		})
-	}
-}
-
 func TestToMD5(t *testing.T) {
 	t.Run("known content", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "file")

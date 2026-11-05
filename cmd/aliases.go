@@ -4,6 +4,8 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"sort"
+
 	"github.com/spf13/cobra"
 )
 
@@ -27,11 +29,27 @@ var KnownAliases = map[string]string{
 var aliasesCmd = &cobra.Command{
 	Use:   "aliases",
 	Short: "Print table of known package aliases",
-	Run: func(cmd *cobra.Command, args []string) {
-		tableHeader([]int{20}, []string{"Alias", "Full package name"})
-		for k, v := range KnownAliases {
-			tableRow(padCol(k, 20, cyan), v)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
+		config, err := ReadConfig(ConfigFile)
+		if err != nil {
+			return err
 		}
+		names := make([]string, 0, len(KnownAliases))
+		for name := range KnownAliases {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		var rows [][]string
+		for _, name := range names {
+			status := ""
+			if _, ok := config.Packages[KnownAliases[name]]; ok {
+				status = green(sLocked + " installed")
+			}
+			rows = append(rows, []string{cyan(name), pkgLabel(KnownAliases[name]), status})
+		}
+		printTable("", []string{"ALIAS", "PACKAGE", ""}, rows)
+		return nil
 	},
 }
 

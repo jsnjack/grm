@@ -38,8 +38,9 @@ var lockCmd = &cobra.Command{
 				if err != nil {
 					return err
 				}
+				msgLocked("Locked %s at %s %s", pkgLabel(item), cyan(pkg.Version), dim(sDot+" updates skip it until grm unlock "+item))
 			} else {
-				msgWarn("Package %s is not installed", bold(item))
+				msgWarn("%s is not installed %s", pkgLabel(item), dim(sDot+" grm list shows installed packages"))
 				continue
 			}
 		}

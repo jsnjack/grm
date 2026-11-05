@@ -20,7 +20,6 @@ func unpackArchive(filename string) (string, error) {
 	if err := os.MkdirAll(tmpDir, 0755); err != nil {
 		return "", fmt.Errorf("create extraction directory: %w", err)
 	}
-	msgStep("Unpacking archive %s", bold(strings.TrimPrefix(filename, tmpDir)))
 	file, err := os.Open(filename)
 	if err != nil {
 		return "", fmt.Errorf("open %s: %w", filename, err)
@@ -116,6 +115,25 @@ type fileEntry struct {
 }
 
 func findBinaryFiles(tmpDir string) ([]fileEntry, error) {
+	files, err := walkFiles(tmpDir)
+	if err != nil {
+		return nil, err
+	}
+
+	var binaries []fileEntry
+	for _, f := range files {
+		if f.isBinary {
+			binaries = append(binaries, f)
+		}
+	}
+	if len(binaries) == 0 {
+		return nil, fmt.Errorf("unable to find a binary file in archive")
+	}
+	return binaries, nil
+}
+
+// walkFiles returns every regular file below tmpDir with its detected type.
+func walkFiles(tmpDir string) ([]fileEntry, error) {
 	var files []fileEntry
 	err := filepath.Walk(tmpDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -149,31 +167,47 @@ func findBinaryFiles(tmpDir string) ([]fileEntry, error) {
 		return nil, fmt.Errorf("walk %s: %w", tmpDir, err)
 	}
 
-	// Find max filename width for alignment
-	maxW := 0
-	for _, f := range files {
-		if len(f.relPath) > maxW {
-			maxW = len(f.relPath)
-		}
-	}
+	return files, nil
+}
 
-	// Print and select
-	var binaries []fileEntry
-	for _, f := range files {
-		if f.isBinary {
-			fmt.Printf("    %s %s %s\n", green(sCheck), padCol(f.relPath, maxW, nil), green(f.ct))
-		} else {
-			fmt.Printf("    %s %s %s\n", dim(sTriang), padCol(f.relPath, maxW, dim), dim(f.ct))
-		}
-		if f.isBinary {
-			binaries = append(binaries, f)
+// printArchiveContents lists an archive's files and marks the selected
+// binaries. Other files are dim, and a long tail is folded into a count.
+func printArchiveContents(assetName string, all, selected []fileEntry) {
+	chosen := make(map[string]bool)
+	for _, f := range selected {
+		chosen[f.relPath] = true
+	}
+	var rows [][]string
+	others := 0
+	for _, f := range all {
+		switch {
+		case chosen[f.relPath]:
+			rows = append(rows, []string{cyan(sSelect) + " " + green(f.relPath), dim("executable")})
+		case f.isBinary:
+			rows = append(rows, []string{"  " + f.relPath, dim("executable")})
+		case others < 5:
+			rows = append(rows, []string{"  " + dim(f.relPath), dim(shortFileType(f.ct))})
+			others++
+		default:
+			others++
 		}
 	}
+	if hidden := others - 5; hidden > 0 {
+		rows = append(rows, []string{"  " + dim(fmt.Sprintf("… %s", plural(hidden, "more file", "more files")))})
+	}
+	msgSection("Archive contents", dim(sDot+" "+assetName))
+	printTable("    ", nil, rows)
+}
 
-	if len(binaries) == 0 {
-		return nil, fmt.Errorf("unable to find a binary file in archive")
+func shortFileType(ct string) string {
+	ct, _, _ = strings.Cut(ct, ";")
+	if kind, ok := strings.CutPrefix(ct, "text/"); ok {
+		if kind == "plain" {
+			return "text"
+		}
+		return kind
 	}
-	return binaries, nil
+	return strings.TrimPrefix(strings.TrimPrefix(ct, "application/"), "x-")
 }
 
 func isLibrary(filename string) bool {

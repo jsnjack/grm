@@ -106,7 +106,7 @@ Examples:
 			for _, installedItem := range config.Packages {
 				if installedItem.GetFullName() == pkg.GetFullName() {
 					if installedItem.Locked {
-						msgLocked("%s is %s", bold(pkg.GetFullName()), yellow("locked"))
+						msgLocked("%s is locked at %s %s", pkgLabel(pkg.GetFullName()), cyan(installedItem.Version), dim(sDot+" grm unlock "+pkg.GetFullName()+" allows changes"))
 						continue argsLoop
 					}
 				}
@@ -117,14 +117,13 @@ Examples:
 			if err != nil {
 				return err
 			}
-			msgOK("Found release %s", boldCyan(release.GetTagName()))
 
 			if !installRefresh && !installLock && requested.VersionFilter == "" && !cmd.Flags().Changed("asset") && !cmd.Flags().Changed("binary") && !cmd.Flags().Changed("rename") && !filterChanged {
 				// Check if package of selected release has already been installed
 				for _, installedItem := range config.Packages {
 					if installedItem.GetFullName() == pkg.GetFullName() {
 						if installedItem.VerifyVersion(release.GetTagName()) == nil {
-							msgOK("%s already at %s", bold(installedItem.GetFullName()), cyan(installedItem.Version))
+							msgOK("%s %s is up to date", pkgLabel(installedItem.GetFullName()), cyan(installedItem.Version))
 							continue argsLoop
 						}
 					}
@@ -164,36 +163,60 @@ considered suitable`,
 
 func selectAssets(assets []*github.ReleaseAsset, filter []string) ([]*github.ReleaseAsset, error) {
 	names := make([]string, 0, len(assets))
+	byName := make(map[string]*github.ReleaseAsset, len(assets))
 	for _, asset := range assets {
 		names = append(names, asset.GetName())
+		byName[asset.GetName()] = asset
 	}
 	filtered := filterSuitableAssets(names, filter)
+	rpmFirst := false
 	if _, err := exec.LookPath("rpm"); err == nil {
+		rpmFirst = true
 		sort.SliceStable(filtered, func(i, j int) bool {
 			return strings.HasSuffix(strings.ToLower(filtered[i]), ".rpm") && !strings.HasSuffix(strings.ToLower(filtered[j]), ".rpm")
 		})
 	}
-	msgStep("Found %d suitable assets", len(filtered))
 	if len(filtered) == 0 {
-		return nil, fmt.Errorf("supported asset not found")
+		return nil, &hintedError{
+			msg:     fmt.Sprintf("no asset matches %s/%s", runtime.GOOS, runtime.GOARCH),
+			details: [][2]string{{"assets", strings.Join(names, "\n")}},
+			fix:     "select one with --asset '<asset name or glob>'",
+		}
 	}
+	summary := fmt.Sprintf("%d of %d match %s/%s", len(filtered), len(assets), runtime.GOOS, runtime.GOARCH)
+	if rpmFirst && len(filtered) > 1 {
+		summary += ", RPMs first"
+	}
+	msgSection("Assets", dim(sDot+" "+summary))
+	var rows [][]string
 	for i, name := range filtered {
-		fmt.Printf("    %d) %s\n", i+1, name)
+		rows = append(rows, []string{cyan(fmt.Sprint(i + 1)), name, dim(assetKind(name)), dim(formatSize(byName[name].GetSize()))})
 	}
-	indices, err := askForNumbers("Select assets (comma-separated numbers or ranges):", len(filtered), false)
+	printTable("    ", nil, rows)
+	indices, err := askForNumbers("Which assets?", len(filtered), "1")
 	if err != nil {
 		return nil, err
 	}
 	var selected []*github.ReleaseAsset
 	for _, index := range indices {
-		for _, asset := range assets {
-			if asset.GetName() == filtered[index-1] {
-				selected = append(selected, asset)
-				break
-			}
-		}
+		selected = append(selected, byName[filtered[index-1]])
 	}
 	return selected, nil
+}
+
+// assetKind names how grm installs an asset.
+func assetKind(name string) string {
+	lower := strings.ToLower(name)
+	switch {
+	case strings.HasSuffix(lower, ".rpm"):
+		return "rpm"
+	case strings.HasSuffix(lower, ".deb"):
+		return "deb"
+	case strings.HasSuffix(lower, ".zip"), strings.Contains(lower, ".tar"), strings.HasSuffix(lower, ".tgz"),
+		strings.HasSuffix(lower, ".gz"), strings.HasSuffix(lower, ".xz"), strings.HasSuffix(lower, ".bz2"), strings.HasSuffix(lower, ".zst"), strings.HasSuffix(lower, ".7z"):
+		return "archive"
+	}
+	return "file"
 }
 
 func filterSuitableAssets(input []string, filters []string) []string {

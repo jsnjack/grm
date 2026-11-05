@@ -166,7 +166,7 @@ func resolveAssetSelections(assets []*github.ReleaseAsset, saved []AssetSelectio
 			}
 		}
 		if len(matches) != 1 {
-			return nil, nil, fmt.Errorf("asset pattern %q matches %d assets; use --asset with a more specific choice", selection.Pattern, len(matches))
+			return nil, nil, assetMatchError(selection.Pattern, len(requested) != 0, tag, assets, matches)
 		}
 		asset := matches[0]
 		if seen[asset.GetName()] {
@@ -185,6 +185,29 @@ func resolveAssetSelections(assets []*github.ReleaseAsset, saved []AssetSelectio
 		resolved = append(resolved, selection)
 	}
 	return selected, resolved, nil
+}
+
+// assetMatchError reports a selection that matches no asset or several
+// assets, together with the names grm compared it against.
+func assetMatchError(pattern string, explicit bool, tag string, assets, matches []*github.ReleaseAsset) error {
+	source := "The saved asset selection"
+	if explicit {
+		source = "--asset " + pattern
+	}
+	msg := fmt.Sprintf("%s matches nothing in %s", source, tag)
+	shown := assets
+	if len(matches) > 1 {
+		msg = fmt.Sprintf("%s matches %d assets in %s", source, len(matches), tag)
+		shown = matches
+	}
+	names := make([]string, 0, len(shown))
+	for _, asset := range shown {
+		names = append(names, asset.GetName())
+	}
+	if len(names) == 0 {
+		names = []string{"(release has no assets)"}
+	}
+	return &hintedError{msg: msg, details: [][2]string{{"selection", pattern}, {"assets", strings.Join(names, "\n")}}}
 }
 
 func selectBinaryFiles(files []fileEntry, assetName string, saved []BinarySelection, requests []binaryRequest, tag string) ([]fileEntry, []BinarySelection, error) {
@@ -209,10 +232,15 @@ func selectBinaryFiles(files []fileEntry, assetName string, saved []BinarySelect
 		choices = saved
 	}
 	if len(choices) == 0 {
-		for i, file := range files {
-			fmt.Printf("    %d) %s\n", i+1, file.relPath)
+		if len(files) > 1 {
+			msgSection("Binaries", dim(sDot+" "+fmt.Sprintf("%d in %s", len(files), assetName)))
+			var rows [][]string
+			for i, file := range files {
+				rows = append(rows, []string{cyan(fmt.Sprint(i + 1)), file.relPath})
+			}
+			printTable("    ", nil, rows)
 		}
-		indices, err := askForNumbers("Select binaries (comma-separated numbers, ranges, or all):", len(files), true)
+		indices, err := askForNumbers("Which binaries?", len(files), "all")
 		if err != nil {
 			return nil, nil, err
 		}
@@ -287,23 +315,24 @@ func parseNumbers(response string, count int) ([]int, error) {
 	return indices, nil
 }
 
-func askForNumbers(message string, count int, allWithYes bool) ([]int, error) {
-	if count == 1 || (rootYes && !allWithYes) {
+// askForNumbers asks for one or more item numbers. Enter selects def. With
+// --yes it selects def without prompting.
+func askForNumbers(message string, count int, def string) ([]int, error) {
+	if count == 1 {
 		return []int{1}, nil
 	}
 	if rootYes {
-		return parseNumbers("all", count)
+		return parseNumbers(def, count)
 	}
 	for {
-		fmt.Printf("%s [1-%d] ", message, count)
-		var response string
-		if _, err := fmt.Scanln(&response); err != nil {
-			return nil, fmt.Errorf("read selection: %w", err)
+		response, err := readAnswer(message, "numbers or ranges, 1-"+fmt.Sprint(count)+" ["+def+"]", def)
+		if err != nil {
+			return nil, err
 		}
 		indices, err := parseNumbers(response, count)
 		if err == nil {
 			return indices, nil
 		}
-		fmt.Println(err)
+		msgWarn("%s", err)
 	}
 }

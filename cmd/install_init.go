@@ -44,11 +44,15 @@ func prepareAsset(filename, assetName, tag, binDir string, selection AssetSelect
 		return nil, selection, fmt.Errorf("detect file type of %s: %w", filename, err)
 	}
 	slog.Debug("detected file type", "type", ct)
-	var files []fileEntry
+	var files, all []fileEntry
 	if isExecutableFileType(ct) && !isLibrary(filepath.Base(filename)) {
 		files = []fileEntry{{relPath: filepath.Base(filename), fullPath: filename, ct: ct, isBinary: true}}
 	} else {
 		dir, err := unpackArchive(filename)
+		if err != nil {
+			return nil, selection, err
+		}
+		all, err = walkFiles(dir)
 		if err != nil {
 			return nil, selection, err
 		}
@@ -79,6 +83,9 @@ func prepareAsset(filename, assetName, tag, binDir string, selection AssetSelect
 		return nil, selection, err
 	}
 	selection.Binaries = remembered
+	if all != nil {
+		printArchiveContents(assetName, all, selected)
+	}
 	var plan []plannedComponent
 	for i, file := range selected {
 		name := remembered[i].Rename
