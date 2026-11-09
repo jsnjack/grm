@@ -131,11 +131,22 @@ func (g *GrmConfig) PutSetting(key string, value string) error {
 	if !ok {
 		return fmt.Errorf("unknown key: %s", key)
 	}
-	if key == "bin_dir" && value != "" && !filepath.IsAbs(value) {
-		return fmt.Errorf("bin_dir must be an absolute path, got %s", value)
+	if key == "bin_dir" {
+		if err := validateBinDir("bin_dir", value); err != nil {
+			return err
+		}
 	}
 	g.Settings[key] = value
 	return g.save()
+}
+
+// validateBinDir accepts an empty value, which means the default, or an
+// absolute path.
+func validateBinDir(name, value string) error {
+	if value != "" && !filepath.IsAbs(value) {
+		return fmt.Errorf("%s must be an absolute path, got %s", name, value)
+	}
+	return nil
 }
 
 // BinDir returns the directory for installed binaries: the bin_dir setting
@@ -145,6 +156,15 @@ func (g *GrmConfig) BinDir() string {
 		return dir
 	}
 	return DefaultBinDir
+}
+
+// PackageBinDir returns the directory for pkg's binaries: the directory saved
+// with install --bin-dir when there is one, otherwise BinDir.
+func (g *GrmConfig) PackageBinDir(pkg *Package) string {
+	if pkg.BinDir != "" {
+		return pkg.BinDir
+	}
+	return g.BinDir()
 }
 
 // ReadConfig reads config file

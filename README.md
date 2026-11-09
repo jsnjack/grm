@@ -106,7 +106,8 @@ Each `--asset` name or glob must match exactly one release asset. A `--binary`
 selector matches an archive-relative path or basename; quote globs so the shell
 does not expand them. A global binary selector applies to every selected binary
 asset; use `asset-glob::path-glob` to scope it when archives have different
-contents. `--rename` remains available when installing exactly one binary.
+contents. `--rename` remains available when installing exactly one binary;
+passing the saved name again does not reinstall the package.
 
 Asset and binary choices, including renames, are saved for later installs and
 updates. Version strings in asset and member paths are replaced with globs so
@@ -154,6 +155,28 @@ existing parent when the directory has not been created yet. Binaries that are
 already installed move to the new directory when they are next updated or
 reinstalled with `--refresh`. Set `bin_dir` to an empty value to use
 `/usr/local/bin/` again.
+
+To install one package into its own directory, pass `--bin-dir` to `install`.
+grm saves the directory with the package, so later installs, `update` and
+`remove` use it without the flag, and other packages stay in `bin_dir`:
+```bash
+grm install jsnjack/wakeci --bin-dir ~/.local/bin
+```
+
+Passing the saved directory again changes nothing. Passing another directory
+moves the package's binaries there, even when its version is current, and
+`--bin-dir ''` moves them back to `bin_dir`. `grm list` counts binaries per
+directory, and `grm list --long` shows each package's saved directory. The
+setting requires grm 2.3.0 or later.
+
+#### What if a program updates itself?
+Some programs, such as wakeci, replace their own binary with a newer release.
+grm's record then still names the old version. When `install` or `update`
+finds a newer release, grm first compares each installed binary with the
+SHA-256 digest that GitHub lists for its release asset. If every binary
+matches, grm updates its record and does not download the release again.
+This works only for assets that are the binary itself: an archive's digest
+covers the archive, so archives and system packages are reinstalled as usual.
 
 ### Keeping grm up to date
 Once installed, `grm` can update itself:

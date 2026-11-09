@@ -39,9 +39,9 @@ var listCmd = &cobra.Command{
 			}
 			fmt.Println(strings.Join(names, " "))
 		case listLong:
-			printLongList(packages, config.BinDir())
+			printLongList(packages)
 		default:
-			printList(packages, config.BinDir())
+			printList(packages)
 		}
 		return nil
 	},
@@ -77,16 +77,17 @@ func packageStatus(p Package) string {
 	return ""
 }
 
-func printList(packages []Package, binDir string) {
+func printList(packages []Package) {
 	var rows [][]string
-	binaries, systemPackages, locked, incomplete := 0, 0, 0, 0
+	systemPackages, locked, incomplete := 0, 0, 0
+	binaries := make(map[string]int)
 	for _, p := range packages {
 		rows = append(rows, []string{pkgLabel(p.GetFullName()), cyan(p.Version), provides(p), packageStatus(p)})
 		for _, c := range p.installedComponents() {
 			if c.SystemPkgName != "" {
 				systemPackages++
 			} else {
-				binaries++
+				binaries[filepath.Dir(c.Filename)]++
 			}
 		}
 		if p.Locked {
@@ -98,9 +99,7 @@ func printList(packages []Package, binDir string) {
 	}
 	printTable("", []string{"PACKAGE", "VERSION", "PROVIDES", ""}, rows)
 	summary := []string{plural(len(packages), "package", "packages")}
-	if binaries > 0 {
-		summary = append(summary, plural(binaries, "binary", "binaries")+" in "+strings.TrimSuffix(binDir, "/"))
-	}
+	summary = append(summary, binaryCounts(binaries)...)
 	if systemPackages > 0 {
 		summary = append(summary, plural(systemPackages, "system package", "system packages"))
 	}
@@ -115,7 +114,27 @@ func printList(packages []Package, binDir string) {
 	fmt.Println(line)
 }
 
-func printLongList(packages []Package, binDir string) {
+// binaryCounts describes how many binaries each directory holds, the
+// directory with the most first.
+func binaryCounts(binaries map[string]int) []string {
+	dirs := make([]string, 0, len(binaries))
+	for dir := range binaries {
+		dirs = append(dirs, dir)
+	}
+	sort.Slice(dirs, func(i, j int) bool {
+		if binaries[dirs[i]] != binaries[dirs[j]] {
+			return binaries[dirs[i]] > binaries[dirs[j]]
+		}
+		return dirs[i] < dirs[j]
+	})
+	parts := make([]string, 0, len(dirs))
+	for _, dir := range dirs {
+		parts = append(parts, plural(binaries[dir], "binary", "binaries")+" in "+dir)
+	}
+	return parts
+}
+
+func printLongList(packages []Package) {
 	legacy := 0
 	for i, p := range packages {
 		if i > 0 {
@@ -127,6 +146,9 @@ func printLongList(packages []Package, binDir string) {
 		}
 		if p.VersionFilter != "" {
 			meta = append(meta, "versions ~="+p.VersionFilter)
+		}
+		if p.BinDir != "" {
+			meta = append(meta, "bin dir "+p.BinDir)
 		}
 		old := len(p.Components) == 0 && (p.Filename != "" || p.SystemPkgName != "")
 		if old {

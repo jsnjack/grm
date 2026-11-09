@@ -21,6 +21,9 @@ type checkResult struct {
 	err     error
 	locked  bool
 	latest  bool
+	// recorded holds the package at release when its binaries already
+	// contain the release, because the program updated itself
+	recorded *Package
 }
 
 // updateCmd represents the update command
@@ -95,6 +98,8 @@ var updateCmd = &cobra.Command{
 				r.release = release
 				if p.VerifyVersion(release.GetTagName()) == nil {
 					r.latest = true
+				} else if current, ok := releaseOnDisk(p, release, config.PackageBinDir(&p)); ok {
+					r.recorded = &current
 				}
 				results[i] = r
 			}(i, p)
@@ -102,10 +107,16 @@ var updateCmd = &cobra.Command{
 		waitWithProgress(&wg, &done, len(toCheck), started)
 
 		// Phase 2: print grouped results
-		var toUpdate, locked, failed []checkResult
+		var toUpdate, locked, failed, recorded []checkResult
 		current := 0
 		var updateErrors []error
 		for _, r := range results {
+			if r.recorded != nil {
+				// Only the record changes, so it needs no confirmation
+				if err := config.PutPackage(r.recorded); err != nil {
+					r.err = fmt.Errorf("record %s: %w", r.release.GetTagName(), err)
+				}
+			}
 			switch {
 			case r.locked:
 				locked = append(locked, r)
@@ -113,6 +124,9 @@ var updateCmd = &cobra.Command{
 				failed = append(failed, r)
 				updateErrors = append(updateErrors, fmt.Errorf("check %s for updates: %w", r.pkg.GetFullName(), r.err))
 			case r.latest:
+				current++
+			case r.recorded != nil:
+				recorded = append(recorded, r)
 				current++
 			default:
 				toUpdate = append(toUpdate, r)
@@ -131,6 +145,14 @@ var updateCmd = &cobra.Command{
 					version = "incomplete"
 				}
 				rows = append(rows, []string{pkgLabel(r.pkg.GetFullName()), versionChange(version, r.release.GetTagName()), dim(released)})
+			}
+			printTable("    ", nil, rows)
+		}
+		if len(recorded) > 0 {
+			msgSection("Already updated", green(fmt.Sprint(len(recorded))))
+			var rows [][]string
+			for _, r := range recorded {
+				rows = append(rows, []string{green(sCheck) + " " + pkgLabel(r.pkg.GetFullName()), versionChange(r.pkg.Version, r.release.GetTagName()), dim(releaseOnDiskNote)})
 			}
 			printTable("    ", nil, rows)
 		}

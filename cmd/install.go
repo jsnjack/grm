@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"runtime"
 	"slices"
 	"sort"
@@ -21,6 +22,7 @@ var installLock bool
 var installRename string
 var installAssets []string
 var installBinaries []string
+var installBinDir string
 
 // installCmd represents the install command
 var installCmd = &cobra.Command{
@@ -56,6 +58,9 @@ Examples:
 		if len(args) > 1 && installRename != "" {
 			return fmt.Errorf("cannot rename multiple packages")
 		}
+		if err := validateBinDir("--bin-dir", installBinDir); err != nil {
+			return err
+		}
 
 		for _, item := range args {
 			_, err := CreatePackage(item)
@@ -89,6 +94,17 @@ Examples:
 				pkg.Filter = installFilter
 				pkg.Selections = nil
 			}
+			// Like --filter, repeating the saved directory or name changes nothing.
+			binDirChanged := false
+			if cmd.Flags().Changed("bin-dir") {
+				dir := installBinDir
+				if dir != "" {
+					dir = filepath.Clean(dir)
+				}
+				binDirChanged = dir != pkg.BinDir
+				pkg.BinDir = dir
+			}
+			renameChanged := cmd.Flags().Changed("rename") && installRename != savedRename(pkg)
 			if requested.VersionFilter != "" {
 				pkg.VersionFilter = requested.VersionFilter
 			} else if requested.Version != "" {
@@ -118,12 +134,19 @@ Examples:
 				return err
 			}
 
-			if !installRefresh && !installLock && requested.VersionFilter == "" && !cmd.Flags().Changed("asset") && !cmd.Flags().Changed("binary") && !cmd.Flags().Changed("rename") && !filterChanged {
+			if !installRefresh && !installLock && requested.VersionFilter == "" && !cmd.Flags().Changed("asset") && !cmd.Flags().Changed("binary") && !renameChanged && !filterChanged && !binDirChanged {
 				// Check if package of selected release has already been installed
 				for _, installedItem := range config.Packages {
 					if installedItem.GetFullName() == pkg.GetFullName() {
 						if installedItem.VerifyVersion(release.GetTagName()) == nil {
 							msgOK("%s %s is up to date", pkgLabel(installedItem.GetFullName()), cyan(installedItem.Version))
+							continue argsLoop
+						}
+						if current, ok := releaseOnDisk(installedItem, release, config.PackageBinDir(&installedItem)); ok {
+							if err := config.PutPackage(&current); err != nil {
+								return err
+							}
+							msgOK("%s %s is up to date %s", pkgLabel(current.GetFullName()), cyan(current.Version), dim(sDot+" "+releaseOnDiskNote))
 							continue argsLoop
 						}
 					}
@@ -159,6 +182,18 @@ considered suitable`,
 	installCmd.Flags().StringVarP(&installRename, "rename", "n", "", "Rename binary file during the installation")
 	installCmd.Flags().StringArrayVar(&installAssets, "asset", nil, "Select an asset by exact name or glob (repeat for multiple assets)")
 	installCmd.Flags().StringArrayVar(&installBinaries, "binary", nil, "Select an archive binary: [asset-glob::]path-glob[=name] (repeatable)")
+	installCmd.Flags().StringVar(&installBinDir, "bin-dir", "", "Install this package's binaries into an absolute directory instead of bin_dir.\nSaved for later installs and updates; '' follows bin_dir again")
+}
+
+// savedRename returns the saved installed name of a package's only binary.
+func savedRename(p *Package) string {
+	if len(p.Selections) == 0 {
+		return p.RenameBinaryTo
+	}
+	if len(p.Selections) == 1 && len(p.Selections[0].Binaries) == 1 {
+		return p.Selections[0].Binaries[0].Rename
+	}
+	return ""
 }
 
 func selectAssets(assets []*github.ReleaseAsset, filter []string) ([]*github.ReleaseAsset, error) {

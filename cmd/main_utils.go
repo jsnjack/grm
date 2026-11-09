@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"crypto/md5"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"log/slog"
@@ -326,6 +327,19 @@ func tomd5(filePath string) (string, error) {
 	}
 	defer logClose(file)
 	h := md5.New()
+	if _, err := io.Copy(h, file); err != nil {
+		return "", fmt.Errorf("hash %s: %w", filePath, err)
+	}
+	return fmt.Sprintf("%x", h.Sum(nil)), nil
+}
+
+func tosha256(filePath string) (string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", fmt.Errorf("open %s: %w", filePath, err)
+	}
+	defer logClose(file)
+	h := sha256.New()
 	if _, err := io.Copy(h, file); err != nil {
 		return "", fmt.Errorf("hash %s: %w", filePath, err)
 	}

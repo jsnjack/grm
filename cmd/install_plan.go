@@ -37,10 +37,14 @@ func confirmInstallPlan(pkg *Package, tag string, plan []plannedComponent) (bool
 		installed[old.identity()] = old
 	}
 	wanted := make(map[string]bool)
+	movedTo := make(map[string]string)
 	var rows [][]string
 	for _, item := range plan {
 		component := item.component
 		wanted[component.identity()] = true
+		if component.Filename != "" {
+			movedTo[filepath.Base(component.Filename)] = filepath.Dir(component.Filename)
+		}
 		symbol, change := green(sAdd), ""
 		if old, ok := installed[component.identity()]; ok {
 			symbol, change = cyan(sUp), "reinstall"
@@ -53,7 +57,11 @@ func confirmInstallPlan(pkg *Package, tag string, plan []plannedComponent) (bool
 	removals := 0
 	for _, old := range pkg.installedComponents() {
 		if !wanted[old.identity()] {
-			rows = append(rows, []string{red(sRemove) + " " + red(componentName(old)) + componentKind(old), "", dim(componentTarget(old) + " " + sDot + " no longer selected")})
+			reason := "no longer selected"
+			if dir, ok := movedTo[filepath.Base(old.Filename)]; ok && old.Filename != "" {
+				reason = "moved to " + dir
+			}
+			rows = append(rows, []string{red(sRemove) + " " + red(componentName(old)) + componentKind(old), "", dim(componentTarget(old) + " " + sDot + " " + reason)})
 			removals++
 		}
 	}
@@ -273,7 +281,7 @@ func installRelease(release *github.RepositoryRelease, pkg *Package, options ins
 		}
 	}
 	var plan []plannedComponent
-	binDir := config.BinDir()
+	binDir := config.PackageBinDir(pkg)
 	for i, asset := range assets {
 		filename, err := downloadFile(asset, pkg)
 		if err != nil {

@@ -35,6 +35,7 @@ cmd/
   install_init.go                Prepares downloaded binaries, archives, and system packages
   install_selection.go           Multi-selection prompts, strict asset/binary selectors, remembered patterns
   install_plan.go                Plans, validates, and applies component installs; persists partial progress
+  install_adopt.go               Records a release a program installed itself (SHA-256 digest match)
   install_archive.go             Archive unpacking + binary detection inside an archive
   install_system_package.go      .deb/.rpm install and removal via apt/dnf/dpkg/rpm
   info.go, list.go, lock.go,
@@ -100,8 +101,9 @@ that ordering.
   if set), overridable with `--config`/`-c`. Holds installed packages
   (`GrmConfig.Packages`) and settings (`GrmConfig.Settings`: `token` and
   `bin_dir`).
-- Binaries install to `GrmConfig.BinDir()`: the `bin_dir` setting when set,
-  otherwise `DefaultBinDir` (`/usr/local/bin/`).
+- Binaries install to `GrmConfig.PackageBinDir()`: the package's saved
+  `bindir` (from `install --bin-dir`) when set, otherwise the `bin_dir`
+  setting, otherwise `DefaultBinDir` (`/usr/local/bin/`).
 - GitHub token resolution order: `--token` flag → `settings.token` in the
   config file → `GITHUB_TOKEN` env var → anonymous (rate-limited) client.
 - `--debug`/`-d`: debug-level logs to stderr. `--trace`: trace-level logs to
@@ -175,6 +177,23 @@ that ordering.
   and the check uses its nearest existing parent, so a new `~/.local/bin` needs
   no sudo either. A missing `/usr/local/bin` is created through sudo. System
   package operations always use `runPrivileged`.
+- **A package can keep its own binary directory.** `install --bin-dir` saves
+  the directory in the package record (`bindir`), so `update`, `remove` and
+  later installs need no flag, and one config can hold wakeci in
+  `~/.local/bin` while other tools stay in `/usr/local/bin`. It is a remembered
+  selection: repeating the saved value is a no-op, a new value moves the
+  binaries even at the same version, and `''` returns to `bin_dir`. A flag
+  that applied to one run only was rejected, because the next `update`
+  recomputes destinations and would move the binary back. A path in
+  `--rename` was rejected because the directory belongs to the package, not
+  to each binary. `--rename` stays; repeating the saved name is a no-op.
+- **grm records releases that programs install themselves.** wakeci replaces
+  its own binary from its settings page, which leaves grm's record at the
+  old version. Before reinstalling, `releaseOnDisk` compares each recorded
+  binary with the SHA-256 `digest` that GitHub lists for its asset. If all
+  match, at the path a new install would use, grm only updates the record.
+  Archives, system packages, and assets without a digest are reinstalled,
+  because their digest does not describe the installed file.
 - **Archive extraction writes only regular files and directories.**
   `unpackArchive` (mholt/archives) skips symlinks and hardlinks and rejects
   absolute entries or entries that escape the extraction directory. It keeps

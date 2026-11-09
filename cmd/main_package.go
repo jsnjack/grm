@@ -20,6 +20,7 @@ type Package struct {
 	RenameBinaryTo string               `yaml:"renamebinaryto,omitempty"`
 	SystemPkgName  string               `yaml:"systempkgname,omitempty"`
 	SystemPkgType  string               `yaml:"systempkgtype,omitempty"` // "deb" or "rpm"
+	BinDir         string               `yaml:"bindir,omitempty"`        // overrides the bin_dir setting for this package
 	Selections     []AssetSelection     `yaml:"selections,omitempty"`
 	Components     []InstalledComponent `yaml:"components,omitempty"`
 }
